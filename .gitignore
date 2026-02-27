@@ -2,6 +2,7 @@
 *.d
 CLAUDE.md
 PLAN.md
+TODO.md
 
 # Claude Code
 .claude/
