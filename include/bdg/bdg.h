@@ -39,6 +39,20 @@ bdg_t *bdg_alloc(size_t dim, const size_t *N, const f64 *L, int complex_psi0);
  */
 void bdg_free(bdg_t **bdg);
 
+/**
+ * Reset physics state for parameter sweeps.
+ *
+ * Clears ALL physics state (trap, wavefunction, interactions, dipolar,
+ * chemical potential, solver results) while preserving grid geometry,
+ * k-space arrays, FFTW plans, scratch buffers, and solver parameters.
+ *
+ * After reset, state == BDG_HAS_SYSTEM — resume from bdg_set_trap().
+ *
+ * WARNING: Pointers from bdg_eigenvalues()/bdg_modes_u()/bdg_modes_v()
+ * become invalid after reset.
+ */
+void bdg_reset(bdg_t *bdg);
+
 /* ================================================================
  * Setup — call in order
  * ================================================================ */

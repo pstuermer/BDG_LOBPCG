@@ -1,8 +1,9 @@
 #include "bdg_internal.h"
+#include <string.h>
 
 /**
  * @file bdg.c
- * @brief Top-level BdG lifecycle: alloc, free, solve dispatch.
+ * @brief Top-level BdG lifecycle: alloc, free, reset, solve dispatch.
  */
 
 /* ----------------------------------------------------------------
@@ -42,10 +43,45 @@ void bdg_free(bdg_t **bdg) {
 }
 
 /* ----------------------------------------------------------------
+ * bdg_reset — clear physics state, preserve grid/plans/scratch
+ * ---------------------------------------------------------------- */
+void bdg_reset(bdg_t *bdg) {
+    BDG_REQUIRE(bdg, BDG_HAS_SYSTEM, "bdg_reset");
+
+    matmul_ctx_t *ctx = bdg->ctx;
+
+    /* Free physics arrays */
+    safe_free((void **)&ctx->wf);
+    safe_free((void **)&ctx->longRngInt);
+    safe_free((void **)&ctx->precond_sqrtK);
+    safe_free((void **)&ctx->precond_sqrtM);
+
+    /* Zero local terms (allocated at alloc time, never freed) */
+    memset(ctx->localTermK, 0, ctx->size * sizeof(f64));
+    memset(ctx->localTermM, 0, ctx->size * sizeof(f64));
+
+    /* Zero scalars */
+    ctx->mu      = 0.0;
+    ctx->g_ddi   = 0.0;
+    ctx->dipolar = 0;
+    ctx->wf_size = 0;
+
+    /* Free results */
+    safe_free((void **)&bdg->eigvals);
+    safe_free((void **)&bdg->modes_u);
+    safe_free((void **)&bdg->modes_v);
+    bdg->converged = 0;
+
+    /* Keep only BDG_HAS_SYSTEM */
+    bdg->state = BDG_HAS_SYSTEM;
+}
+
+/* ----------------------------------------------------------------
  * Setup pass-throughs
  * ---------------------------------------------------------------- */
 void bdg_set_system(bdg_t *bdg) {
     matmul_ctx_set_system(bdg->ctx, bdg->complex_psi0);
+    bdg->state |= BDG_HAS_SYSTEM;
 }
 
 void bdg_set_solver_params(bdg_t *bdg, size_t nev, size_t sizeSub,
@@ -60,6 +96,8 @@ void bdg_set_solver_params(bdg_t *bdg, size_t nev, size_t sizeSub,
  * bdg_solve — dispatches to d or z path
  * ---------------------------------------------------------------- */
 int bdg_solve(bdg_t *bdg) {
+    BDG_REQUIRE(bdg, BDG_HAS_SYSTEM, "bdg_solve");
+    BDG_REQUIRE(bdg, BDG_HAS_MU, "bdg_solve");
     if (bdg->complex_psi0)
         return bdg_solve_z(bdg);
     else
