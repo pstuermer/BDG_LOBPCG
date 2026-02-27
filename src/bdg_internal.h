@@ -3,7 +3,7 @@
 
 #include "bdg/bdg.h"
 #include "lobpcg/types.h"
-#include "lobpcg/memory.h"
+#include "bdg/memory.h"
 #include "lobpcg/linop.h"
 #include <fftw3.h>
 
