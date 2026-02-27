@@ -29,7 +29,7 @@ typedef struct {
 
     /* k-space arrays (persistent, read every matvec) */
     f64   *k2;          /* |k|^2, length k_size */
-    f64  **kx2;         /* Per-dimension k_d^2 arrays, kx2[d][k_size] */
+    f64  **kx2;         /* Per-dimension k_d^2 arrays, kx2[d][N[d]] */
 
     /* Physics (persistent, set during setup) */
     f64   *localTermK;  /* V_trap + U_intK - mu, length size */
