@@ -178,7 +178,7 @@ void bdg_set_mu(bdg_t *bdg, f64 mu) {
 /* ----------------------------------------------------------------
  * bdg_set_dipolar — kernel + mean-field (3D only)
  * ---------------------------------------------------------------- */
-void bdg_set_dipolar(bdg_t *bdg, f64 g_ddi, const f64 *dipole_dir) {
+void bdg_set_dipolar(bdg_t *bdg, f64 g_ddi, const f64 *dipole_dir, f64 cutoff_radius) {
     BDG_REQUIRE(bdg, BDG_HAS_WF, "bdg_set_dipolar");
     BDG_FORBID(bdg, BDG_HAS_MU, "bdg_set_dipolar");
 
@@ -188,7 +188,7 @@ void bdg_set_dipolar(bdg_t *bdg, f64 g_ddi, const f64 *dipole_dir) {
         BDG_ERROR("bdg_set_dipolar: dipolar interactions require dim == 3 (got %zu)",
                   ctx->dim);
 
-    dipolar_set_kernel(ctx, g_ddi, dipole_dir);
+    dipolar_set_kernel(ctx, g_ddi, dipole_dir, cutoff_radius);
     dipolar_add_meanfield(ctx);
     ctx->dipolar = 1;
 

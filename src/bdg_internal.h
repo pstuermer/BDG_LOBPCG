@@ -180,7 +180,7 @@ void precondLrep_z(matmul_ctx_t *ctx, const c64 *x, c64 *y);
  * ================================================================ */
 
 /** Build k-space kernel longRngInt (3D only). */
-void dipolar_set_kernel(matmul_ctx_t *ctx, f64 g_ddi, const f64 *dipole_dir);
+void dipolar_set_kernel(matmul_ctx_t *ctx, f64 g_ddi, const f64 *dipole_dir, f64 cutoff_radius);
 
 /** Add mean-field dipolar potential to localTermK and localTermM. */
 void dipolar_add_meanfield(matmul_ctx_t *ctx);

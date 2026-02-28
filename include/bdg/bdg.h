@@ -104,10 +104,11 @@ void bdg_set_mu(bdg_t *bdg, f64 mu);
  * Computes the k-space kernel and adds the mean-field dipolar potential
  * to localTermK and localTermM.
  *
- * @param g_ddi       Dipolar coupling strength
- * @param dipole_dir  Unit vector for dipole orientation (length 3)
+ * @param g_ddi          Dipolar coupling strength
+ * @param dipole_dir     Unit vector for dipole orientation (length 3)
+ * @param cutoff_radius  Spherical cutoff radius for the dipolar kernel
  */
-void bdg_set_dipolar(bdg_t *bdg, f64 g_ddi, const f64 *dipole_dir);
+void bdg_set_dipolar(bdg_t *bdg, f64 g_ddi, const f64 *dipole_dir, f64 cutoff_radius);
 
 /* ================================================================
  * Solver
