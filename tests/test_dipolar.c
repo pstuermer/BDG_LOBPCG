@@ -142,6 +142,84 @@ TEST(kernel_r2c_vs_c2c) {
     matmul_ctx_free(&ctx_c2c);
 }
 
+/* ================================================================
+ * Test 4: Uniform wf=1 → FFT(1) is delta at k=0, kernel[k=0]=0
+ *   so Φ_dd = 0 everywhere. localTermK/M remain unchanged.
+ * ================================================================ */
+TEST(meanfield_uniform_density_d) {
+    const size_t N[] = {8, 8, 8};
+    const f64    L[] = {2.0 * M_PI, 2.0 * M_PI, 2.0 * M_PI};
+    matmul_ctx_t *ctx = matmul_ctx_alloc(3, N, L);
+    matmul_ctx_set_system(ctx, 0);
+    const size_t size = ctx->size;
+
+    ctx->localTermK = xcalloc(size, sizeof(f64));
+    ctx->localTermM = xcalloc(size, sizeof(f64));
+    ctx->wf = xcalloc(size, sizeof(f64));
+    for (size_t i = 0; i < size; i++)
+        ((f64 *)ctx->wf)[i] = 1.0;
+
+    const f64 dir[] = {0.0, 0.0, 1.0};
+    dipolar_set_kernel(ctx, 1.0, dir, L[0] / 2.0);
+    dipolar_add_meanfield(ctx);
+
+    for (size_t i = 0; i < size; i++) {
+        ASSERT_CLOSE(ctx->localTermK[i], 0.0, 1e-12);
+        ASSERT_CLOSE(ctx->localTermM[i], 0.0, 1e-12);
+    }
+
+    matmul_ctx_free(&ctx);
+}
+
+/* ================================================================
+ * Test 5: d/z consistency — wf = 1 + 0.3*cos(x+y+z), real values
+ *   in both d and z contexts. localTermK/M must match.
+ * ================================================================ */
+TEST(meanfield_dz_consistency) {
+    const size_t N[] = {8, 8, 8};
+    const f64    L[] = {2.0 * M_PI, 2.0 * M_PI, 2.0 * M_PI};
+
+    matmul_ctx_t *ctx_d = matmul_ctx_alloc(3, N, L);
+    matmul_ctx_set_system(ctx_d, 0);
+    matmul_ctx_t *ctx_z = matmul_ctx_alloc(3, N, L);
+    matmul_ctx_set_system(ctx_z, 1);
+    const size_t size = ctx_d->size;
+
+    ctx_d->localTermK = xcalloc(size, sizeof(f64));
+    ctx_d->localTermM = xcalloc(size, sizeof(f64));
+    ctx_d->wf = xcalloc(size, sizeof(f64));
+    ctx_z->localTermK = xcalloc(size, sizeof(f64));
+    ctx_z->localTermM = xcalloc(size, sizeof(f64));
+    ctx_z->wf = xcalloc(size, sizeof(c64));
+
+    for (size_t iz = 0; iz < N[2]; iz++)
+        for (size_t iy = 0; iy < N[1]; iy++)
+            for (size_t ix = 0; ix < N[0]; ix++) {
+                const f64 xv = (f64)ix * L[0] / (f64)N[0];
+                const f64 yv = (f64)iy * L[1] / (f64)N[1];
+                const f64 zv = (f64)iz * L[2] / (f64)N[2];
+                const size_t idx = iz * N[1] * N[0] + iy * N[0] + ix;
+                const f64 val = 1.0 + 0.3 * cos(xv + yv + zv);
+                ((f64 *)ctx_d->wf)[idx] = val;
+                ((c64 *)ctx_z->wf)[idx] = val + 0.0 * I;
+            }
+
+    const f64 dir[] = {0.0, 0.0, 1.0};
+    const f64 Rc = L[0] / 2.0;
+    dipolar_set_kernel(ctx_d, 1.0, dir, Rc);
+    dipolar_set_kernel(ctx_z, 1.0, dir, Rc);
+    dipolar_add_meanfield(ctx_d);
+    dipolar_add_meanfield(ctx_z);
+
+    for (size_t i = 0; i < size; i++) {
+        ASSERT_CLOSE(ctx_d->localTermK[i], ctx_z->localTermK[i], 1e-10);
+        ASSERT_CLOSE(ctx_d->localTermM[i], ctx_z->localTermM[i], 1e-10);
+    }
+
+    matmul_ctx_free(&ctx_d);
+    matmul_ctx_free(&ctx_z);
+}
+
 /* ================================================================ */
 int main(void) {
     printf("Dipolar kernel (k=0 edge case):\n");
@@ -152,6 +230,10 @@ int main(void) {
 
     printf("\nDipolar kernel (r2c vs c2c):\n");
     RUN(kernel_r2c_vs_c2c);
+
+    printf("\ndipolar_add_meanfield:\n");
+    RUN(meanfield_uniform_density_d);
+    RUN(meanfield_dz_consistency);
 
     printf("\n========================================\n");
     printf("Results: %d passed, %d failed\n", tests_passed, tests_failed);

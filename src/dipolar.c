@@ -75,16 +75,8 @@ void dipolar_set_kernel(matmul_ctx_t *ctx, f64 g_ddi, const f64 *dipole_dir,
  * dipolar_add_meanfield — Phi_dd added to localTermK/M
  * ---------------------------------------------------------------- */
 void dipolar_add_meanfield(matmul_ctx_t *ctx) {
-    /* TODO: Implement
-     *
-     * 1. Compute |wf|^2 into scratch
-     * 2. FFT(|wf|^2) → f_wrk
-     * 3. f_wrk[i] *= longRngInt[i] / size
-     * 4. IFFT(f_wrk) → scratch  (this is Phi_dd)
-     * 5. localTermK[i] += g_ddi * Phi_dd[i]
-     *    localTermM[i] += g_ddi * Phi_dd[i]
-     *
-     * Reference: ~/LREP_post/src/dipolar.c:103-127
-     */
-    (void)ctx;
+    if (ctx->complex_psi0)
+        dipolar_add_meanfield_z(ctx);
+    else
+        dipolar_add_meanfield_d(ctx);
 }
