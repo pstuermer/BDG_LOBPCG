@@ -8,10 +8,12 @@
 #include "bdg_internal.h"
 
 void FN(matmulK)(matmul_ctx_t *ctx, const CTYPE *x, CTYPE *y) {
-    /* TODO: Implement
-     *
-     * 1. kinetic(ctx, x, y)          — y = 0.5*k^2*x via FFT
-     * 2. for i: y[i] += localTermK[i] * x[i]  — pointwise multiply-add
-     */
-    (void)ctx; (void)x; (void)y;
+    const size_t size = ctx->size;
+    const f64   *ltK  = ctx->localTermK;
+
+    FN(kinetic)(ctx, x, y);
+
+#pragma omp parallel for simd schedule(static)
+    for (size_t i = 0; i < size; i++)
+        y[i] += ltK[i] * x[i];
 }
