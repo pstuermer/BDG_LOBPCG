@@ -220,6 +220,92 @@ TEST(meanfield_dz_consistency) {
     matmul_ctx_free(&ctx_z);
 }
 
+/* ================================================================
+ * Test 6: dipolar_conv linearity — conv(a*v) = a * conv(v)
+ * ================================================================ */
+TEST(dipolar_conv_linearity_d) {
+    const size_t N[] = {8, 8, 8};
+    const f64    L[] = {2.0 * M_PI, 2.0 * M_PI, 2.0 * M_PI};
+    matmul_ctx_t *ctx = matmul_ctx_alloc(3, N, L);
+    matmul_ctx_set_system(ctx, 0);
+    const size_t size = ctx->size;
+
+    ctx->wf = xcalloc(size, sizeof(f64));
+    for (size_t i = 0; i < size; i++)
+        ((f64 *)ctx->wf)[i] = 1.0 + 0.1 * (f64)(i % 7);
+
+    const f64 dir[] = {0.0, 0.0, 1.0};
+    dipolar_set_kernel(ctx, 1.5, dir, L[0] / 2.0);
+
+    f64 *v1   = xcalloc(size, sizeof(f64));
+    f64 *v2   = xcalloc(size, sizeof(f64));
+    f64 *out1 = xcalloc(size, sizeof(f64));
+    f64 *out2 = xcalloc(size, sizeof(f64));
+
+    for (size_t i = 0; i < size; i++) {
+        v1[i] = cos(2.0 * M_PI * (f64)(i % N[0]) / (f64)N[0]);
+        v2[i] = 3.7 * v1[i];
+    }
+
+    dipolar_conv_d(ctx, v1, out1);
+    dipolar_conv_d(ctx, v2, out2);
+
+    for (size_t i = 0; i < size; i++)
+        ASSERT_CLOSE(out2[i], 3.7 * out1[i], 1e-10);
+
+    safe_free((void **)&v1); safe_free((void **)&v2);
+    safe_free((void **)&out1); safe_free((void **)&out2);
+    matmul_ctx_free(&ctx);
+}
+
+/* ================================================================
+ * Test 7: d/z consistency — real input gives same result both paths
+ * ================================================================ */
+TEST(dipolar_conv_dz_consistency) {
+    const size_t N[] = {8, 8, 8};
+    const f64    L[] = {2.0 * M_PI, 2.0 * M_PI, 2.0 * M_PI};
+
+    matmul_ctx_t *ctx_d = matmul_ctx_alloc(3, N, L);
+    matmul_ctx_set_system(ctx_d, 0);
+    matmul_ctx_t *ctx_z = matmul_ctx_alloc(3, N, L);
+    matmul_ctx_set_system(ctx_z, 1);
+    const size_t size = ctx_d->size;
+
+    ctx_d->wf = xcalloc(size, sizeof(f64));
+    ctx_z->wf = xcalloc(size, sizeof(c64));
+    for (size_t i = 0; i < size; i++) {
+        const f64 val = 1.0 + 0.2 * (f64)(i % 5);
+        ((f64 *)ctx_d->wf)[i] = val;
+        ((c64 *)ctx_z->wf)[i] = val + 0.0 * I;
+    }
+
+    const f64 dir[] = {0.0, 0.0, 1.0};
+    dipolar_set_kernel(ctx_d, 1.0, dir, L[0] / 2.0);
+    dipolar_set_kernel(ctx_z, 1.0, dir, L[0] / 2.0);
+
+    f64 *vd = xcalloc(size, sizeof(f64));
+    c64 *vz = xcalloc(size, sizeof(c64));
+    f64 *od = xcalloc(size, sizeof(f64));
+    c64 *oz = xcalloc(size, sizeof(c64));
+
+    for (size_t i = 0; i < size; i++) {
+        vd[i] = sin(2.0 * M_PI * (f64)(i % N[0]) / (f64)N[0]);
+        vz[i] = vd[i] + 0.0 * I;
+    }
+
+    dipolar_conv_d(ctx_d, vd, od);
+    dipolar_conv_z(ctx_z, vz, oz);
+
+    for (size_t i = 0; i < size; i++) {
+        ASSERT_CLOSE(creal(oz[i]), od[i], 1e-10);
+        ASSERT_CLOSE(cimag(oz[i]), 0.0, 1e-10);
+    }
+
+    safe_free((void **)&vd); safe_free((void **)&vz);
+    safe_free((void **)&od); safe_free((void **)&oz);
+    matmul_ctx_free(&ctx_d); matmul_ctx_free(&ctx_z);
+}
+
 /* ================================================================ */
 int main(void) {
     printf("Dipolar kernel (k=0 edge case):\n");
@@ -234,6 +320,10 @@ int main(void) {
     printf("\ndipolar_add_meanfield:\n");
     RUN(meanfield_uniform_density_d);
     RUN(meanfield_dz_consistency);
+
+    printf("\ndipolar_conv:\n");
+    RUN(dipolar_conv_linearity_d);
+    RUN(dipolar_conv_dz_consistency);
 
     printf("\n========================================\n");
     printf("Results: %d passed, %d failed\n", tests_passed, tests_failed);
