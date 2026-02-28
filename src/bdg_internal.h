@@ -5,7 +5,10 @@
 #include "lobpcg/types.h"
 #include "bdg/memory.h"
 #include "lobpcg/linop.h"
+#include "bdg_log.h"
 #include <fftw3.h>
+#include <math.h>
+#include <stdint.h>
 
 /**
  * @file bdg_internal.h
@@ -14,6 +17,37 @@
  * Full struct definitions and internal function prototypes.
  * NOT installed — only included by src/ .c files.
  */
+
+/* ================================================================
+ * Setup state tracking — bitmask flags
+ * ================================================================ */
+
+enum {
+    BDG_HAS_SYSTEM       = 1u << 0,
+    BDG_HAS_TRAP         = 1u << 1,
+    BDG_HAS_WF           = 1u << 2,
+    BDG_HAS_INTERACTIONS = 1u << 3,
+    BDG_HAS_DIPOLAR      = 1u << 4,
+    BDG_HAS_MU           = 1u << 5
+};
+
+/** Exit if prerequisite flag is NOT set. */
+#define BDG_REQUIRE(bdg, flag, caller) do { \
+    if (0 == ((bdg)->state & (flag))) \
+        BDG_ERROR("%s: prerequisite %s not satisfied", caller, #flag); \
+} while (0)
+
+/** Exit if flag IS already set (prevents double-call). */
+#define BDG_FORBID(bdg, flag, caller) do { \
+    if (0 != ((bdg)->state & (flag))) \
+        BDG_ERROR("%s: %s already set (double-call forbidden)", caller, #flag); \
+} while (0)
+
+/** Clamp near-zero values to threshold (for preconditioner sqrt). */
+static inline f64 safe_val(f64 x) {
+    const f64 thresh = 1e-8;
+    return (fabs(x) < thresh) ? thresh : x;
+}
 
 /* ================================================================
  * matmul_ctx_t — holds all operator data
@@ -53,7 +87,7 @@ typedef struct {
      * c_wrk1: sized for max(size, k_size) * sizeof(c64)
      * c_wrk2: sized for max(size, k_size) * sizeof(c64)
      */
-    void *f_wrk;
+    c64  *f_wrk;        /* c64[k_size] — FFT workspace */
     void *c_wrk1;
     void *c_wrk2;
 
@@ -71,6 +105,7 @@ typedef struct {
 
 struct bdg_t {
     matmul_ctx_t *ctx;
+    uint32_t state;     /* Bitmask of BDG_HAS_* flags (zeroed by xcalloc) */
 
     /* Solver parameters */
     size_t nev;
