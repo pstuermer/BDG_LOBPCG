@@ -8,15 +8,24 @@
  */
 
 #include "bdg_internal.h"
+#include <omp.h>
 
 void FN(matmulM)(matmul_ctx_t *ctx, const CTYPE *x, CTYPE *y) {
-    /* TODO: Implement
-     *
-     * 1. kinetic(ctx, x, y)
-     * 2. for i: y[i] += localTermM[i] * x[i]
-     * 3. if (ctx->dipolar && ctx->dim == 3):
-     *        dipolar_conv(ctx, x, c_wrk2)   // perturbation convolution
-     *        for i: y[i] += 2.0 * c_wrk2[i]
-     */
-    (void)ctx; (void)x; (void)y;
+    const size_t size = ctx->size;
+    const f64   *ltM  = ctx->localTermM;
+
+    FN(kinetic)(ctx, x, y);
+
+#pragma omp parallel for simd schedule(static)
+    for (size_t i = 0; i < size; i++)
+        y[i] += ltM[i] * x[i];
+
+    if (ctx->dipolar && 3 == ctx->dim) {
+        CTYPE *dc = (CTYPE *)ctx->c_wrk2;
+        FN(dipolar_conv)(ctx, x, dc);
+
+#pragma omp parallel for simd schedule(static)
+        for (size_t i = 0; i < size; i++)
+            y[i] += 2.0 * dc[i];
+    }
 }
