@@ -7,6 +7,7 @@ REVIEW.md
 
 # Claude Code
 .claude/
+docs/
 
 # Binary executables
 *.ex

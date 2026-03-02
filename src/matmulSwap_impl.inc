@@ -11,10 +11,9 @@
 #include <string.h>
 
 void FN(matmulSwap)(matmul_ctx_t *ctx, const CTYPE *x, CTYPE *y) {
-    /* TODO: Implement
-     *
-     * memcpy(y,             x + ctx->size, ctx->size * sizeof(CTYPE));
-     * memcpy(y + ctx->size, x,             ctx->size * sizeof(CTYPE));
-     */
-    (void)ctx; (void)x; (void)y;
+  const uint64_t size = ctx->size;
+
+  memcpy(&y[size], x, size * sizeof(CTYPE));
+  memcpy(&x[size], y, size * sizeof(CTYPE));
+  
 }
