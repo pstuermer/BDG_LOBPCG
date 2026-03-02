@@ -82,10 +82,8 @@ void FN(precondM)(matmul_ctx_t *ctx, const CTYPE *x, CTYPE *y) {
 }
 
 void FN(precondLrep)(matmul_ctx_t *ctx, const CTYPE *x, CTYPE *y) {
-    /* TODO: Implement
-     *
-     * precondK(ctx, x, y);                           // top half
-     * precondM(ctx, x + ctx->size, y + ctx->size);   // bottom half
-     */
-    (void)ctx; (void)x; (void)y;
+    const uint64_t size = ctx->size;
+
+    FN(precondK)(ctx, x, y);
+    FN(precondM)(ctx, &x[size], &y[size]);
 }
