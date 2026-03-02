@@ -13,7 +13,7 @@
 void FN(matmulSwap)(matmul_ctx_t *ctx, const CTYPE *x, CTYPE *y) {
   const uint64_t size = ctx->size;
 
+  memcpy(y, &x[size], size * sizeof(CTYPE));
   memcpy(&y[size], x, size * sizeof(CTYPE));
-  memcpy(&x[size], y, size * sizeof(CTYPE));
   
 }
