@@ -147,7 +147,7 @@ void bdg_set_local_interactions(bdg_t *bdg,
  * bdg_set_mu — subtract mu from localTermK/M, store for preconditioner
  * ---------------------------------------------------------------- */
 void bdg_set_mu(bdg_t *bdg, f64 mu) {
-    BDG_REQUIRE(bdg, BDG_HAS_INTERACTIONS, "bdg_set_mu");
+    BDG_REQUIRE(bdg, BDG_HAS_SYSTEM, "bdg_set_mu");
 
     matmul_ctx_t *ctx = bdg->ctx;
     const size_t size = ctx->size;
