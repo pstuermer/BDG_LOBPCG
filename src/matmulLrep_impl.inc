@@ -11,10 +11,8 @@
 #include "bdg_internal.h"
 
 void FN(matmulLrep)(matmul_ctx_t *ctx, const CTYPE *x, CTYPE *y) {
-    /* TODO: Implement
-     *
-     * matmulK(ctx, x, y);                            // top half
-     * matmulM(ctx, x + ctx->size, y + ctx->size);    // bottom half
-     */
-    (void)ctx; (void)x; (void)y;
+  const uint64_t size = ctx->size;
+
+  FN(matmulK)(ctx, x, y);
+  FN(matmulM)(ctx, &x[size], &y[size]);
 }
