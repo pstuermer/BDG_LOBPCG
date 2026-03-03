@@ -119,6 +119,14 @@ struct bdg_t {
     void  *modes_u;     /* f64* or c64*, size*nev, column-major */
     void  *modes_v;     /* f64* or c64*, size*nev, column-major */
     size_t converged;
+
+    /* Init strategy (survives bdg_reset) */
+    bdg_init_mode_t init_mode;       /* default: BDG_INIT_DEFAULT (0 from xcalloc) */
+    bdg_init_fn     custom_init_fn;  /* only for BDG_INIT_CUSTOM */
+    void           *custom_init_param;
+    void           *reuse_buf;       /* S-format buffer: n * sizeSub elements */
+    uint64_t        reuse_n;         /* n = 2*size at capture time */
+    uint64_t        reuse_cols;      /* sizeSub at capture time */
 };
 
 /* ================================================================
