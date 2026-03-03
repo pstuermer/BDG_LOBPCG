@@ -1,5 +1,6 @@
 #include "bdg_internal.h"
 #include <stdio.h>
+#include <stdarg.h>
 #include <complex.h>
 #include <stdint.h>
 #include <string.h>
@@ -151,4 +152,14 @@ int bdg_write_mode_u(const bdg_t *bdg, uint64_t mode_idx,
 int bdg_write_mode_v(const bdg_t *bdg, uint64_t mode_idx,
                      const char *basename) {
   return write_mode_impl(bdg, mode_idx, bdg->modes_v, basename, "v");
+}
+
+int bdg_load_wavefunction_fmt(bdg_t *bdg, const char *fmt, ...) {
+  char fname[512];
+  va_list args;
+  va_start(args, fmt);
+  const int n = vsnprintf(fname, sizeof(fname), fmt, args);
+  va_end(args);
+  if (n < 0 || (size_t)n >= sizeof(fname)) return -1;
+  return bdg_load_wavefunction(bdg, fname);
 }

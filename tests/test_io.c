@@ -110,6 +110,34 @@ TEST(load_wf_file_not_found) {
   bdg_free(&bdg);
 }
 
+TEST(load_wf_fmt) {
+  /* Create temp file with known name */
+  const char *dir = "/tmp";
+  const int idx = 7;
+  char expected_name[256];
+  snprintf(expected_name, sizeof(expected_name), "%s/test_wf_%03d.dat", dir, idx);
+
+  FILE *f = fopen(expected_name, "w");
+  fprintf(f, "1.5 0.0\n2.5 0.0\n");
+  fclose(f);
+
+  const size_t N[] = {2};
+  const f64 L[] = {1.0};
+  bdg_t *bdg = bdg_alloc(1, N, L, 0);
+  bdg_set_system(bdg);
+
+  int rc = bdg_load_wavefunction_fmt(bdg, "%s/test_wf_%03d.dat", dir, idx);
+  ASSERT(0 == rc);
+
+  const f64 *wf = (const f64 *)bdg->ctx->wf;
+  ASSERT(NULL != wf);
+  ASSERT_NEAR(wf[0], 1.5, 1e-12);
+  ASSERT_NEAR(wf[1], 2.5, 1e-12);
+
+  bdg_free(&bdg);
+  unlink(expected_name);
+}
+
 /* ================================================================
  * Task 5: bdg_write_eigenvalues tests
  * ================================================================ */
@@ -422,6 +450,7 @@ int main(void) {
   RUN(load_wf_real);
   RUN(load_wf_complex);
   RUN(load_wf_file_not_found);
+  RUN(load_wf_fmt);
 
   printf("\nWrite eigenvalues:\n");
   RUN(write_eigenvalues);

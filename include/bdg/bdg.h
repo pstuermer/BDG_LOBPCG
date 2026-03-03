@@ -2,6 +2,7 @@
 #define BDG_H
 
 #include "lobpcg/types.h"
+#include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -206,6 +207,13 @@ const void *bdg_modes_v(const bdg_t *bdg);
  * @return 0 success, -1 file error, -2 format/size mismatch.
  */
 int bdg_load_wavefunction(bdg_t *bdg, const char *filename);
+
+/**
+ * Load wavefunction from a printf-formatted filename.
+ * Example: bdg_load_wavefunction_fmt(bdg, "data/wf_%03d.dat", step);
+ * @return same as bdg_load_wavefunction.
+ */
+int bdg_load_wavefunction_fmt(bdg_t *bdg, const char *fmt, ...);
 
 /**
  * Append eigenvalues to text file. One row per call: nev tab-separated
