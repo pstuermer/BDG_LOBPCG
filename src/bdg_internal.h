@@ -49,6 +49,21 @@ static inline f64 safe_val(f64 x) {
     return (fabs(x) < thresh) ? thresh : x;
 }
 
+/** Simple xorshift32 PRNG — portable, no POSIX dependency. */
+static inline uint32_t xorshift32(uint32_t *state) {
+  uint32_t x = *state;
+  x ^= x << 13;
+  x ^= x >> 17;
+  x ^= x << 5;
+  *state = x;
+  return x;
+}
+
+/** Uniform random in (0, 1]. */
+static inline f64 xrand(uint32_t *state) {
+  return (f64)(xorshift32(state) & 0x7FFFFFFF) / (f64)0x7FFFFFFF;
+}
+
 /* ================================================================
  * matmul_ctx_t — holds all operator data
  * ================================================================ */
@@ -119,6 +134,14 @@ struct bdg_t {
     void  *modes_u;     /* f64* or c64*, size*nev, column-major */
     void  *modes_v;     /* f64* or c64*, size*nev, column-major */
     size_t converged;
+
+    /* Init strategy (survives bdg_reset) */
+    bdg_init_mode_t init_mode;       /* default: BDG_INIT_DEFAULT (0 from xcalloc) */
+    bdg_init_fn     custom_init_fn;  /* only for BDG_INIT_CUSTOM */
+    void           *custom_init_param;
+    void           *reuse_buf;       /* S-format buffer: n * sizeSub elements */
+    uint64_t        reuse_n;         /* n = 2*size at capture time */
+    uint64_t        reuse_cols;      /* sizeSub at capture time */
 };
 
 /* ================================================================
