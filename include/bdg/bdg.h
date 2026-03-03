@@ -3,6 +3,7 @@
 
 #include "lobpcg/types.h"
 #include <stddef.h>
+#include <stdint.h>
 
 /**
  * @file bdg.h
@@ -20,6 +21,31 @@
  * ================================================================ */
 
 typedef struct bdg_t bdg_t;
+
+/* ================================================================
+ * Init strategy for eigenvector seeding
+ * ================================================================ */
+
+typedef enum {
+  BDG_INIT_DEFAULT,      /* Planewave-seeded, B-positive (current behavior) */
+  BDG_INIT_WF_WEIGHTED,  /* |gauss| * |psi0| for both halves (B-positive) */
+  BDG_INIT_REUSE,        /* Previous modes + noise; set by bdg_reuse_modes */
+  BDG_INIT_CUSTOM        /* User callback; must ensure B-positivity */
+} bdg_init_mode_t;
+
+/**
+ * Custom init callback type.
+ * @param bdg      The BdG handle (read-only for grid info)
+ * @param X        Eigenvector block to fill: ctype[n * sizeSub], column-major.
+ *                 ctype is f64 if complex_psi0=0, c64 if complex_psi0=1.
+ *                 n = 2*size. Each column j: X[0..size-1] = u-part, X[size..n-1] = v-part.
+ *                 For B-positivity: set u-part = v-part per column.
+ * @param n        Row dimension (2 * grid_size)
+ * @param sizeSub  Number of columns (search space width)
+ * @param param    User data from bdg_set_init_mode
+ */
+typedef void (*bdg_init_fn)(const bdg_t *bdg, void *X,
+                            uint64_t n, uint64_t sizeSub, void *param);
 
 /* ================================================================
  * Lifecycle
@@ -124,6 +150,28 @@ void bdg_set_dipolar(bdg_t *bdg, f64 g_ddi, const f64 *dipole_dir, f64 cutoff_ra
 void bdg_set_solver_params(bdg_t *bdg, size_t nev, size_t sizeSub,
                            size_t maxIter, f64 tol);
 
+/* ================================================================
+ * Init strategy
+ * ================================================================ */
+
+/**
+ * Select eigenvector initialization strategy.
+ * For BDG_INIT_CUSTOM, fn and param are required; ignored otherwise.
+ * Survives bdg_reset — set once, reused across sweeps.
+ */
+void bdg_set_init_mode(bdg_t *bdg, bdg_init_mode_t mode,
+                       bdg_init_fn fn, void *param);
+
+/**
+ * Copy current modes into internal buffer with Gaussian noise for reuse.
+ * noise_frac: per-column noise stddev = noise_frac * ||column||.
+ * Automatically sets init_mode to BDG_INIT_REUSE.
+ * Must be called BEFORE bdg_reset (while results exist).
+ * After next bdg_solve, init_mode reverts to BDG_INIT_WF_WEIGHTED.
+ * @return 0 on success, -3 if no results exist.
+ */
+int bdg_reuse_modes(bdg_t *bdg, f64 noise_frac);
+
 /**
  * Solve the BdG eigenvalue problem.
  * Dispatches to d_ilobpcg or z_ilobpcg based on complex_psi0.
@@ -146,5 +194,38 @@ const void *bdg_modes_u(const bdg_t *bdg);
 
 /** Eigenmodes v-part: size*nev column-major. Cast to f64* or c64*. */
 const void *bdg_modes_v(const bdg_t *bdg);
+
+/* ================================================================
+ * File I/O
+ * ================================================================ */
+
+/**
+ * Load wavefunction from text file. Format: one "real imag" pair per line.
+ * Reads ctx->size pairs, calls bdg_set_wavefunction internally.
+ * For real psi0, stores only the real part; for complex, stores both.
+ * @return 0 success, -1 file error, -2 format/size mismatch.
+ */
+int bdg_load_wavefunction(bdg_t *bdg, const char *filename);
+
+/**
+ * Append eigenvalues to text file. One row per call: nev tab-separated
+ * values in %.8e format, terminated by newline. Creates file if absent.
+ * @return 0 success, -1 file error, -3 no results.
+ */
+int bdg_write_eigenvalues(const bdg_t *bdg, const char *filename);
+
+/**
+ * Write u-part of mode mode_idx to basename_u_<idx>.dat.
+ * Dimension-aware formatting: 1D one value per line; 2D blank line
+ * between y-rows; 3D blank line between z-slices.
+ * Always writes "real imag" pairs (imag=0 for real psi0).
+ * @return 0 success, -1 file error, -2 mode_idx out of range, -3 no results.
+ */
+int bdg_write_mode_u(const bdg_t *bdg, uint64_t mode_idx,
+                     const char *basename);
+
+/** Write v-part of mode mode_idx. Same format as bdg_write_mode_u. */
+int bdg_write_mode_v(const bdg_t *bdg, uint64_t mode_idx,
+                     const char *basename);
 
 #endif /* BDG_H */
