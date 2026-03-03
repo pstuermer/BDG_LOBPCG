@@ -216,7 +216,7 @@ int bdg_write_eigenvalues(const bdg_t *bdg, const char *filename);
 
 /**
  * Write u-part of mode mode_idx to basename_u_<idx>.dat.
- * Dimension-aware formatting: 1D one value per line; 2D blank line
+ * Dimension-aware formatting: 1D one pair per line; 2D blank line
  * between y-rows; 3D blank line between z-slices.
  * Always writes "real imag" pairs (imag=0 for real psi0).
  * @return 0 success, -1 file error, -2 mode_idx out of range, -3 no results.

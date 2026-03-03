@@ -122,7 +122,7 @@ int bdg_reuse_modes(bdg_t *bdg, f64 noise_frac) {
   bdg->reuse_n = n;
   bdg->reuse_cols = sizeSub;
 
-  unsigned int seed = 12345;
+  uint32_t seed = 12345;
 
   if (0 == bdg->complex_psi0) {
     f64 *buf = (f64 *)bdg->reuse_buf;
@@ -139,8 +139,8 @@ int bdg_reuse_modes(bdg_t *bdg, f64 noise_frac) {
       const f64 sigma = noise_frac * col_norm;
 
       for (uint64_t i = 0; i < size; i++) {
-        f64 u1 = (f64)rand_r(&seed) / RAND_MAX;
-        f64 u2 = (f64)rand_r(&seed) / RAND_MAX;
+        f64 u1 = xrand(&seed);
+        f64 u2 = xrand(&seed);
         u1 = fmax(u1, 1e-10);
         const f64 z0 = sqrt(-2.0 * log(u1)) * cos(2.0 * M_PI * u2);
         const f64 z1 = sqrt(-2.0 * log(u1)) * sin(2.0 * M_PI * u2);
@@ -152,8 +152,8 @@ int bdg_reuse_modes(bdg_t *bdg, f64 noise_frac) {
     const f64 *wf = (const f64 *)bdg->ctx->wf;
     for (uint64_t j = nev; j < sizeSub; j++) {
       for (uint64_t i = 0; i < size; i++) {
-        f64 u1 = (f64)rand_r(&seed) / RAND_MAX;
-        f64 u2 = (f64)rand_r(&seed) / RAND_MAX;
+        f64 u1 = xrand(&seed);
+        f64 u2 = xrand(&seed);
         u1 = fmax(u1, 1e-10);
         const f64 val = fabs(sqrt(-2.0 * log(u1)) * cos(2.0 * M_PI * u2))
                       * ((NULL != wf) ? fabs(wf[i]) : 1.0);
@@ -176,8 +176,8 @@ int bdg_reuse_modes(bdg_t *bdg, f64 noise_frac) {
       const f64 sigma = noise_frac * col_norm;
 
       for (uint64_t i = 0; i < size; i++) {
-        f64 u1 = (f64)rand_r(&seed) / RAND_MAX;
-        f64 u2 = (f64)rand_r(&seed) / RAND_MAX;
+        f64 u1 = xrand(&seed);
+        f64 u2 = xrand(&seed);
         u1 = fmax(u1, 1e-10);
         const f64 z0 = sqrt(-2.0 * log(u1)) * cos(2.0 * M_PI * u2);
         const f64 z1 = sqrt(-2.0 * log(u1)) * sin(2.0 * M_PI * u2);
@@ -189,8 +189,8 @@ int bdg_reuse_modes(bdg_t *bdg, f64 noise_frac) {
     const c64 *wf = (const c64 *)bdg->ctx->wf;
     for (uint64_t j = nev; j < sizeSub; j++) {
       for (uint64_t i = 0; i < size; i++) {
-        f64 u1 = (f64)rand_r(&seed) / RAND_MAX;
-        f64 u2 = (f64)rand_r(&seed) / RAND_MAX;
+        f64 u1 = xrand(&seed);
+        f64 u2 = xrand(&seed);
         u1 = fmax(u1, 1e-10);
         const f64 val = fabs(sqrt(-2.0 * log(u1)) * cos(2.0 * M_PI * u2))
                       * ((NULL != wf) ? cabs(wf[i]) : 1.0);

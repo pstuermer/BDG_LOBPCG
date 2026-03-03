@@ -49,6 +49,21 @@ static inline f64 safe_val(f64 x) {
     return (fabs(x) < thresh) ? thresh : x;
 }
 
+/** Simple xorshift32 PRNG — portable, no POSIX dependency. */
+static inline uint32_t xorshift32(uint32_t *state) {
+  uint32_t x = *state;
+  x ^= x << 13;
+  x ^= x >> 17;
+  x ^= x << 5;
+  *state = x;
+  return x;
+}
+
+/** Uniform random in (0, 1]. */
+static inline f64 xrand(uint32_t *state) {
+  return (f64)(xorshift32(state) & 0x7FFFFFFF) / (f64)0x7FFFFFFF;
+}
+
 /* ================================================================
  * matmul_ctx_t — holds all operator data
  * ================================================================ */

@@ -69,6 +69,11 @@ int bdg_solve_d(bdg_t *bdg) {
   const uint64_t nev = bdg->nev;
   const uint64_t sizeSub = bdg->sizeSub;
 
+  /* Free any previous results (allows re-solve without reset) */
+  safe_free((void **)&bdg->eigvals);
+  safe_free((void **)&bdg->modes_u);
+  safe_free((void **)&bdg->modes_v);
+
   /* 1. Allocate ilobpcg state */
   d_lobpcg_t *alg = d_ilobpcg_alloc(n, nev, sizeSub);
 
@@ -101,11 +106,11 @@ int bdg_solve_d(bdg_t *bdg) {
     /* fallthrough */
   case BDG_INIT_WF_WEIGHTED: {
     const f64 *wf = (const f64 *)ctx->wf;
-    unsigned int seed = 42;
+    uint32_t seed = 42;
     for (uint64_t j = 0; j < sizeSub; j++) {
       for (uint64_t i = 0; i < size; i++) {
-        f64 u1 = (f64)rand_r(&seed) / RAND_MAX;
-        f64 u2 = (f64)rand_r(&seed) / RAND_MAX;
+        f64 u1 = xrand(&seed);
+        f64 u2 = xrand(&seed);
         u1 = fmax(u1, 1e-10);
         const f64 val = fabs(sqrt(-2.0 * log(u1)) * cos(2.0 * M_PI * u2))
                       * ((NULL != wf) ? fabs(wf[i]) : 1.0);
@@ -129,7 +134,7 @@ int bdg_solve_d(bdg_t *bdg) {
      * Setting u-part = v-part guarantees x^T*B*x = 2*u^T*u > 0.
      */
     const f64 *wf = (const f64 *)ctx->wf;
-    unsigned int seed = 42;
+    uint32_t seed = 42;
 
     for (uint64_t j = 0; j < sizeSub; j++) {
       const uint64_t k_idx = (j + 1) / 2;  /* 0, 1, 1, 2, 2, 3, ... */
@@ -147,7 +152,7 @@ int bdg_solve_d(bdg_t *bdg) {
         }
 
         /* Weight by |wf| and add small perturbation */
-        const f64 pert = 1e-4 * ((f64)rand_r(&seed) / RAND_MAX - 0.5);
+        const f64 pert = 1e-4 * (xrand(&seed) - 0.5);
         const f64 wf_weight = (NULL != wf) ? fabs(wf[i]) : 1.0;
         const f64 val = (pw + pert) * wf_weight;
 
@@ -195,6 +200,11 @@ int bdg_solve_z(bdg_t *bdg) {
   const uint64_t nev = bdg->nev;
   const uint64_t sizeSub = bdg->sizeSub;
 
+  /* Free any previous results (allows re-solve without reset) */
+  safe_free((void **)&bdg->eigvals);
+  safe_free((void **)&bdg->modes_u);
+  safe_free((void **)&bdg->modes_v);
+
   /* 1. Allocate ilobpcg state */
   z_lobpcg_t *alg = z_ilobpcg_alloc(n, nev, sizeSub);
 
@@ -226,11 +236,11 @@ int bdg_solve_z(bdg_t *bdg) {
     /* fallthrough */
   case BDG_INIT_WF_WEIGHTED: {
     const c64 *wf = (const c64 *)ctx->wf;
-    unsigned int seed = 42;
+    uint32_t seed = 42;
     for (uint64_t j = 0; j < sizeSub; j++) {
       for (uint64_t i = 0; i < size; i++) {
-        f64 u1 = (f64)rand_r(&seed) / RAND_MAX;
-        f64 u2 = (f64)rand_r(&seed) / RAND_MAX;
+        f64 u1 = xrand(&seed);
+        f64 u2 = xrand(&seed);
         u1 = fmax(u1, 1e-10);
         const c64 val = (fabs(sqrt(-2.0 * log(u1)) * cos(2.0 * M_PI * u2))
                       * ((NULL != wf) ? cabs(wf[i]) : 1.0)) + 0.0 * I;
@@ -249,7 +259,7 @@ int bdg_solve_z(bdg_t *bdg) {
     /* Planewave-seeded, B-positive init.
      * (See bdg_solve_d DEFAULT case for rationale.) */
     const c64 *wf = (const c64 *)ctx->wf;
-    unsigned int seed = 42;
+    uint32_t seed = 42;
 
     for (uint64_t j = 0; j < sizeSub; j++) {
       const uint64_t k_idx = (j + 1) / 2;
@@ -265,7 +275,7 @@ int bdg_solve_z(bdg_t *bdg) {
           pw = use_sin ? sin(kval * xpos) : cos(kval * xpos);
         }
 
-        const f64 pert = 1e-4 * ((f64)rand_r(&seed) / RAND_MAX - 0.5);
+        const f64 pert = 1e-4 * (xrand(&seed) - 0.5);
         const f64 wf_weight = (NULL != wf) ? cabs(wf[i]) : 1.0;
         const c64 val = ((pw + pert) * wf_weight) + 0.0 * I;
 
