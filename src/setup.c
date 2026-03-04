@@ -1,4 +1,5 @@
 #include "bdg_internal.h"
+#include <inttypes.h>
 #include <math.h>
 #include <string.h>
 
@@ -14,7 +15,7 @@
  * bdg_set_trap — add V_trap(r) to localTermK and localTermM
  * ---------------------------------------------------------------- */
 void bdg_set_trap(bdg_t *bdg,
-                  f64 (*V_trap)(uint64_t dim, const f64 *r, void *param),
+                  f64 (*V_trap)(uint64_t dim, const f64 *r, const void *param),
                   const void *param) {
     BDG_REQUIRE(bdg, BDG_HAS_SYSTEM, "bdg_set_trap");
 
@@ -94,7 +95,7 @@ void bdg_set_wavefunction(bdg_t *bdg, const void *wf, uint64_t wf_size) {
         BDG_ERROR("bdg_set_wavefunction: wf is NULL");
 
     if (wf_size != ctx->size)
-        BDG_ERROR("bdg_set_wavefunction: wf_size (%zu) != grid size (%zu)",
+        BDG_ERROR("bdg_set_wavefunction: wf_size (%" PRIu64 ") != grid size (%" PRIu64 ")",
                   wf_size, ctx->size);
 
     /* Free previous wf if re-calling (e.g. after bdg_reset) */
@@ -116,8 +117,8 @@ void bdg_set_wavefunction(bdg_t *bdg, const void *wf, uint64_t wf_size) {
  * bdg_set_local_interactions — U_intK and U_intM function pointers
  * ---------------------------------------------------------------- */
 void bdg_set_local_interactions(bdg_t *bdg,
-                                f64 (*U_intK)(void *param, f64 density),
-                                f64 (*U_intM)(void *param, f64 density),
+                                f64 (*U_intK)(const void *param, f64 density),
+                                f64 (*U_intM)(const void *param, f64 density),
                                 const void *param) {
     BDG_REQUIRE(bdg, BDG_HAS_WF, "bdg_set_local_interactions");
     BDG_FORBID(bdg, BDG_HAS_INTERACTIONS, "bdg_set_local_interactions");
@@ -185,7 +186,7 @@ void bdg_set_dipolar(bdg_t *bdg, f64 g_ddi, const f64 *dipole_dir, f64 cutoff_ra
     matmul_ctx_t *ctx = bdg->ctx;
 
     if (3 != ctx->dim)
-        BDG_ERROR("bdg_set_dipolar: dipolar interactions require dim == 3 (got %zu)",
+        BDG_ERROR("bdg_set_dipolar: dipolar interactions require dim == 3 (got %" PRIu64 ")",
                   ctx->dim);
 
     dipolar_set_kernel(ctx, g_ddi, dipole_dir, cutoff_radius);

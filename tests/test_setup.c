@@ -1,5 +1,6 @@
 #include "bdg_internal.h"
 #include <math.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/wait.h>
@@ -47,7 +48,7 @@ static int tests_failed = 0;
 
 TEST(k_size) {
     {
-        const size_t N[] = {32};
+        const uint64_t N[] = {32};
         const f64    L[] = {1.0};
         matmul_ctx_t *ctx = matmul_ctx_alloc(1, N, L);
         matmul_ctx_set_system(ctx, 0);
@@ -60,7 +61,7 @@ TEST(k_size) {
         matmul_ctx_free(&ctx);
     }
     {
-        const size_t N[] = {16, 8};
+        const uint64_t N[] = {16, 8};
         const f64    L[] = {1.0, 1.0};
         matmul_ctx_t *ctx = matmul_ctx_alloc(2, N, L);
         matmul_ctx_set_system(ctx, 0);
@@ -73,7 +74,7 @@ TEST(k_size) {
         matmul_ctx_free(&ctx);
     }
     {
-        const size_t N[] = {8, 6, 4};
+        const uint64_t N[] = {8, 6, 4};
         const f64    L[] = {1.0, 1.0, 1.0};
         matmul_ctx_t *ctx = matmul_ctx_alloc(3, N, L);
         matmul_ctx_set_system(ctx, 0);
@@ -88,31 +89,31 @@ TEST(k_size) {
 }
 
 TEST(kx2) {
-    const size_t N[] = {8, 6};
+    const uint64_t N[] = {8, 6};
     const f64    L[] = {2.0 * M_PI, 2.0 * M_PI};
     matmul_ctx_t *ctx = matmul_ctx_alloc(2, N, L);
     matmul_ctx_set_system(ctx, 0);
 
     const f64 expect_kx0[] = {0, 1, 4, 9, 16, 9, 4, 1};
-    for (size_t j = 0; j < 8; j++)
+    for (uint64_t j = 0; j < 8; j++)
         ASSERT_CLOSE(ctx->kx2[0][j], expect_kx0[j], TOL);
 
     const f64 expect_kx1[] = {0, 1, 4, 9, 4, 1};
-    for (size_t j = 0; j < 6; j++)
+    for (uint64_t j = 0; j < 6; j++)
         ASSERT_CLOSE(ctx->kx2[1][j], expect_kx1[j], TOL);
 
     matmul_ctx_free(&ctx);
 }
 
 TEST(k2_1d) {
-    const size_t N_val = 32;
-    const size_t N[] = {N_val};
+    const uint64_t N_val = 32;
+    const uint64_t N[] = {N_val};
     const f64 L[] = {2.0 * M_PI};
     {
         matmul_ctx_t *ctx = matmul_ctx_alloc(1, N, L);
         matmul_ctx_set_system(ctx, 0);
         ASSERT(ctx->k_size == 17);
-        for (size_t j = 0; j <= 16; j++) {
+        for (uint64_t j = 0; j <= 16; j++) {
             const f64 expected = (f64)(j * j);
             ASSERT_CLOSE(ctx->k2[j], expected, TOL);
         }
@@ -122,7 +123,7 @@ TEST(k2_1d) {
         matmul_ctx_t *ctx = matmul_ctx_alloc(1, N, L);
         matmul_ctx_set_system(ctx, 1);
         ASSERT(ctx->k_size == 32);
-        for (size_t j = 0; j < 32; j++) {
+        for (uint64_t j = 0; j < 32; j++) {
             const int kj = (j <= 16) ? (int)j : (int)j - 32;
             const f64 expected = (f64)(kj * kj);
             ASSERT_CLOSE(ctx->k2[j], expected, TOL);
@@ -132,12 +133,12 @@ TEST(k2_1d) {
 }
 
 TEST(k2_2d) {
-    const size_t N[] = {8, 6};
+    const uint64_t N[] = {8, 6};
     const f64    L[] = {2.0 * M_PI, 2.0 * M_PI};
     matmul_ctx_t *ctx = matmul_ctx_alloc(2, N, L);
     matmul_ctx_set_system(ctx, 0);
 
-    const size_t N0_k = 5;
+    const uint64_t N0_k = 5;
     ASSERT(ctx->k_size == 30);
     ASSERT_CLOSE(ctx->k2[0], 0.0, TOL);
     ASSERT_CLOSE(ctx->k2[1], 1.0, TOL);
@@ -149,12 +150,12 @@ TEST(k2_2d) {
 }
 
 TEST(k2_2d_c2c) {
-    const size_t N[] = {8, 6};
+    const uint64_t N[] = {8, 6};
     const f64    L[] = {2.0 * M_PI, 2.0 * M_PI};
     matmul_ctx_t *ctx = matmul_ctx_alloc(2, N, L);
     matmul_ctx_set_system(ctx, 1);
 
-    const size_t N0_k = 8;
+    const uint64_t N0_k = 8;
     ASSERT(ctx->k_size == 48);
     ASSERT_CLOSE(ctx->k2[0], 0.0, TOL);
     ASSERT_CLOSE(ctx->k2[1], 1.0, TOL);
@@ -165,23 +166,23 @@ TEST(k2_2d_c2c) {
 }
 
 TEST(k2_3d) {
-    const size_t N[] = {8, 8, 8};
+    const uint64_t N[] = {8, 8, 8};
     const f64 L[] = {2.0 * M_PI, 2.0 * M_PI, 2.0 * M_PI};
     {
         matmul_ctx_t *ctx = matmul_ctx_alloc(3, N, L);
         matmul_ctx_set_system(ctx, 0);
 
-        const size_t N0_k = 5;
+        const uint64_t N0_k = 5;
         ASSERT(ctx->k_size == 320);
         ASSERT_CLOSE(ctx->k2[0], 0.0, TOL);
         ASSERT_CLOSE(ctx->k2[1], 1.0, TOL);
         ASSERT_CLOSE(ctx->k2[1 * N0_k], 1.0, TOL);
         ASSERT_CLOSE(ctx->k2[1 * 8 * N0_k], 1.0, TOL);
 
-        const size_t idx_111 = 1 * 8 * N0_k + 1 * N0_k + 1;
+        const uint64_t idx_111 = 1 * 8 * N0_k + 1 * N0_k + 1;
         ASSERT_CLOSE(ctx->k2[idx_111], 3.0, TOL);
 
-        const size_t idx_235 = 5 * 8 * N0_k + 3 * N0_k + 2;
+        const uint64_t idx_235 = 5 * 8 * N0_k + 3 * N0_k + 2;
         ASSERT_CLOSE(ctx->k2[idx_235], 22.0, TOL);
 
         matmul_ctx_free(&ctx);
@@ -189,16 +190,16 @@ TEST(k2_3d) {
 }
 
 TEST(fftw_roundtrip_c2c_2d) {
-    const size_t N[] = {16, 8};
+    const uint64_t N[] = {16, 8};
     const f64 L[] = {1.0, 1.0};
     matmul_ctx_t *ctx = matmul_ctx_alloc(2, N, L);
     matmul_ctx_set_system(ctx, 1);
 
-    const size_t size = ctx->size;
+    const uint64_t size = ctx->size;
     c64 *in  = (c64 *)ctx->c_wrk1;
     c64 *wrk = (c64 *)ctx->f_wrk;
 
-    for (size_t i = 0; i < size; i++)
+    for (uint64_t i = 0; i < size; i++)
         in[i] = (f64)i + I * (f64)(size - i);
 
     c64 *saved = xcalloc(size, sizeof(c64));
@@ -210,7 +211,7 @@ TEST(fftw_roundtrip_c2c_2d) {
                      (fftw_complex *)wrk, (fftw_complex *)in);
 
     int ok = 1;
-    for (size_t i = 0; i < size; i++) {
+    for (uint64_t i = 0; i < size; i++) {
         const f64 re_err = fabs(creal(in[i]) / (f64)size - creal(saved[i]));
         const f64 im_err = fabs(cimag(in[i]) / (f64)size - cimag(saved[i]));
         if (re_err > 1e-10 || im_err > 1e-10) { ok = 0; break; }
@@ -222,16 +223,16 @@ TEST(fftw_roundtrip_c2c_2d) {
 }
 
 TEST(fftw_roundtrip_r2c_1d) {
-    const size_t N[] = {32};
+    const uint64_t N[] = {32};
     const f64 L[] = {1.0};
     matmul_ctx_t *ctx = matmul_ctx_alloc(1, N, L);
     matmul_ctx_set_system(ctx, 0);
 
-    const size_t size = ctx->size;
+    const uint64_t size = ctx->size;
     f64 *in = (f64 *)ctx->c_wrk1;
     fftw_complex *wrk = (fftw_complex *)ctx->f_wrk;
 
-    for (size_t i = 0; i < size; i++)
+    for (uint64_t i = 0; i < size; i++)
         in[i] = sin(2.0 * M_PI * (f64)i / (f64)size) + 0.5;
 
     f64 *saved = xcalloc(size, sizeof(f64));
@@ -241,7 +242,7 @@ TEST(fftw_roundtrip_r2c_1d) {
     fftw_execute_dft_c2r(ctx->bwd_plan, wrk, in);
 
     int ok = 1;
-    for (size_t i = 0; i < size; i++) {
+    for (uint64_t i = 0; i < size; i++) {
         if (fabs(in[i] / (f64)size - saved[i]) > 1e-10) { ok = 0; break; }
     }
     ASSERT(ok);
@@ -251,16 +252,16 @@ TEST(fftw_roundtrip_r2c_1d) {
 }
 
 TEST(fftw_roundtrip_r2c_3d) {
-    const size_t N[] = {8, 6, 4};
+    const uint64_t N[] = {8, 6, 4};
     const f64 L[] = {1.0, 2.0, 3.0};
     matmul_ctx_t *ctx = matmul_ctx_alloc(3, N, L);
     matmul_ctx_set_system(ctx, 0);
 
-    const size_t size = ctx->size;
+    const uint64_t size = ctx->size;
     f64 *in = (f64 *)ctx->c_wrk1;
     fftw_complex *wrk = (fftw_complex *)ctx->f_wrk;
 
-    for (size_t i = 0; i < size; i++)
+    for (uint64_t i = 0; i < size; i++)
         in[i] = (f64)(i % 7) - 3.0;
 
     f64 *saved = xcalloc(size, sizeof(f64));
@@ -270,7 +271,7 @@ TEST(fftw_roundtrip_r2c_3d) {
     fftw_execute_dft_c2r(ctx->bwd_plan, wrk, in);
 
     int ok = 1;
-    for (size_t i = 0; i < size; i++) {
+    for (uint64_t i = 0; i < size; i++) {
         if (fabs(in[i] / (f64)size - saved[i]) > 1e-10) { ok = 0; break; }
     }
     ASSERT(ok);
@@ -284,10 +285,10 @@ TEST(fftw_roundtrip_r2c_3d) {
  * ================================================================ */
 
 /* --- Helper: harmonic trap V(r) = 0.5 * omega^2 * r^2 --- */
-static f64 harmonic_trap(size_t dim, const f64 *r, void *param) {
+static f64 harmonic_trap(uint64_t dim, const f64 *r, void *param) {
     const f64 omega = *(const f64 *)param;
     f64 r2 = 0.0;
-    for (size_t d = 0; d < dim; d++)
+    for (uint64_t d = 0; d < dim; d++)
         r2 += r[d] * r[d];
     return 0.5 * omega * omega * r2;
 }
@@ -296,7 +297,7 @@ static f64 harmonic_trap(size_t dim, const f64 *r, void *param) {
  * test_trap_harmonic_1d: verify localTermK/M at each grid point
  * ---------------------------------------------------------------- */
 TEST(trap_harmonic_1d) {
-    const size_t N[] = {16};
+    const uint64_t N[] = {16};
     const f64    L[] = {8.0};
     f64 omega = 1.0;
 
@@ -305,7 +306,7 @@ TEST(trap_harmonic_1d) {
     bdg_set_trap(bdg, harmonic_trap, &omega);
 
     const matmul_ctx_t *ctx = bdg->ctx;
-    for (size_t ix = 0; ix < 16; ix++) {
+    for (uint64_t ix = 0; ix < 16; ix++) {
         const f64 x = ((f64)ix - 8.0) * 8.0 / 16.0;
         const f64 expected = 0.5 * x * x;
         ASSERT_CLOSE(ctx->localTermK[ix], expected, TOL);
@@ -322,7 +323,7 @@ TEST(trap_harmonic_1d) {
  * test_trap_harmonic_2d: spot-check center and corners
  * ---------------------------------------------------------------- */
 TEST(trap_harmonic_2d) {
-    const size_t N[] = {8, 6};
+    const uint64_t N[] = {8, 6};
     const f64    L[] = {4.0, 3.0};
     f64 omega = 2.0;
 
@@ -331,15 +332,15 @@ TEST(trap_harmonic_2d) {
     bdg_set_trap(bdg, harmonic_trap, &omega);
 
     const matmul_ctx_t *ctx = bdg->ctx;
-    const size_t Nx = 8;
+    const uint64_t Nx = 8;
 
     /* Check all grid points */
-    for (size_t iy = 0; iy < 6; iy++) {
+    for (uint64_t iy = 0; iy < 6; iy++) {
         const f64 y = ((f64)iy - 3.0) * 3.0 / 6.0;
-        for (size_t ix = 0; ix < 8; ix++) {
+        for (uint64_t ix = 0; ix < 8; ix++) {
             const f64 x = ((f64)ix - 4.0) * 4.0 / 8.0;
             const f64 expected = 0.5 * 4.0 * (x * x + y * y);
-            const size_t idx = iy * Nx + ix;
+            const uint64_t idx = iy * Nx + ix;
             ASSERT_CLOSE(ctx->localTermK[idx], expected, 1e-10);
             ASSERT_CLOSE(ctx->localTermM[idx], expected, 1e-10);
         }
@@ -352,20 +353,20 @@ TEST(trap_harmonic_2d) {
  * test_wavefunction_real: copy + verify f64 array
  * ---------------------------------------------------------------- */
 TEST(wavefunction_real) {
-    const size_t N[] = {8};
+    const uint64_t N[] = {8};
     const f64    L[] = {1.0};
 
     bdg_t *bdg = bdg_alloc(1, N, L, 0);
     bdg_set_system(bdg);
 
     f64 wf[8];
-    for (size_t i = 0; i < 8; i++)
+    for (uint64_t i = 0; i < 8; i++)
         wf[i] = sin(2.0 * M_PI * (f64)i / 8.0);
 
     bdg_set_wavefunction(bdg, wf, 8);
 
     const f64 *stored = (const f64 *)bdg->ctx->wf;
-    for (size_t i = 0; i < 8; i++)
+    for (uint64_t i = 0; i < 8; i++)
         ASSERT_CLOSE(stored[i], wf[i], TOL);
 
     ASSERT(bdg->state & BDG_HAS_WF);
@@ -378,20 +379,20 @@ TEST(wavefunction_real) {
  * test_wavefunction_complex: copy + verify c64 array
  * ---------------------------------------------------------------- */
 TEST(wavefunction_complex) {
-    const size_t N[] = {8};
+    const uint64_t N[] = {8};
     const f64    L[] = {1.0};
 
     bdg_t *bdg = bdg_alloc(1, N, L, 1);
     bdg_set_system(bdg);
 
     c64 wf[8];
-    for (size_t i = 0; i < 8; i++)
+    for (uint64_t i = 0; i < 8; i++)
         wf[i] = (f64)i + I * (f64)(8 - i);
 
     bdg_set_wavefunction(bdg, wf, 8);
 
     const c64 *stored = (const c64 *)bdg->ctx->wf;
-    for (size_t i = 0; i < 8; i++) {
+    for (uint64_t i = 0; i < 8; i++) {
         ASSERT_CLOSE(creal(stored[i]), creal(wf[i]), TOL);
         ASSERT_CLOSE(cimag(stored[i]), cimag(wf[i]), TOL);
     }
@@ -412,7 +413,7 @@ static f64 contact_int(void *param, f64 density) {
 }
 
 TEST(local_interactions_contact) {
-    const size_t N[] = {16};
+    const uint64_t N[] = {16};
     const f64    L[] = {1.0};
     const f64 g = 2.5;
     const f64 psi_val = 0.7;
@@ -423,7 +424,7 @@ TEST(local_interactions_contact) {
 
     /* Uniform wavefunction */
     f64 wf[16];
-    for (size_t i = 0; i < 16; i++)
+    for (uint64_t i = 0; i < 16; i++)
         wf[i] = psi_val;
     bdg_set_wavefunction(bdg, wf, 16);
 
@@ -431,7 +432,7 @@ TEST(local_interactions_contact) {
     bdg_set_local_interactions(bdg, contact_int, contact_int, &g_param);
 
     const matmul_ctx_t *ctx = bdg->ctx;
-    for (size_t i = 0; i < 16; i++) {
+    for (uint64_t i = 0; i < 16; i++) {
         ASSERT_CLOSE(ctx->localTermK[i], g * n, 1e-14);
         ASSERT_CLOSE(ctx->localTermM[i], 3.0 * g * n, 1e-14);
     }
@@ -446,7 +447,7 @@ TEST(local_interactions_contact) {
  *              interactions → mu. Verify subtraction + preconditioner.
  * ---------------------------------------------------------------- */
 TEST(set_mu) {
-    const size_t N[] = {8};
+    const uint64_t N[] = {8};
     const f64    L[] = {4.0};
     const f64 g = 1.0;
     const f64 psi_val = 1.0;
@@ -461,7 +462,7 @@ TEST(set_mu) {
 
     /* Uniform wavefunction */
     f64 wf[8];
-    for (size_t i = 0; i < 8; i++)
+    for (uint64_t i = 0; i < 8; i++)
         wf[i] = psi_val;
     bdg_set_wavefunction(bdg, wf, 8);
 
@@ -478,7 +479,7 @@ TEST(set_mu) {
 
     const matmul_ctx_t *ctx = bdg->ctx;
 
-    for (size_t i = 0; i < 8; i++) {
+    for (uint64_t i = 0; i < 8; i++) {
         /* Check mu was subtracted */
         ASSERT_CLOSE(ctx->localTermK[i], ltK_before[i] - mu, 1e-14);
         ASSERT_CLOSE(ctx->localTermM[i], ltM_before[i] - mu, 1e-14);
@@ -502,7 +503,7 @@ TEST(set_mu) {
  * test_trap_additive: calling set_trap twice adds both potentials
  * ---------------------------------------------------------------- */
 TEST(trap_additive) {
-    const size_t N[] = {8};
+    const uint64_t N[] = {8};
     const f64    L[] = {4.0};
     f64 omega1 = 1.0;
     f64 omega2 = 2.0;
@@ -513,7 +514,7 @@ TEST(trap_additive) {
     bdg_set_trap(bdg, harmonic_trap, &omega2);
 
     const matmul_ctx_t *ctx = bdg->ctx;
-    for (size_t ix = 0; ix < 8; ix++) {
+    for (uint64_t ix = 0; ix < 8; ix++) {
         const f64 x = ((f64)ix - 4.0) * 4.0 / 8.0;
         const f64 expected = 0.5 * (1.0 + 4.0) * x * x;  /* omega1^2 + omega2^2 */
         ASSERT_CLOSE(ctx->localTermK[ix], expected, 1e-10);
@@ -548,7 +549,7 @@ static int expect_exit_failure(void (*fn)(void)) {
 
 /* Try bdg_set_trap without bdg_set_system → should fail */
 static void call_trap_without_system(void) {
-    const size_t N[] = {8};
+    const uint64_t N[] = {8};
     const f64    L[] = {1.0};
     f64 omega = 1.0;
     bdg_t *bdg = bdg_alloc(1, N, L, 0);
@@ -559,7 +560,7 @@ static void call_trap_without_system(void) {
 
 /* Try bdg_set_wavefunction without bdg_set_system → should fail */
 static void call_wf_without_system(void) {
-    const size_t N[] = {8};
+    const uint64_t N[] = {8};
     const f64    L[] = {1.0};
     f64 wf[8] = {0};
     bdg_t *bdg = bdg_alloc(1, N, L, 0);
@@ -574,7 +575,7 @@ static void call_wf_without_system(void) {
  * AFTER fftw_init_threads in the PARENT. Since we fork first and
  * then call set_system in the child, this is safe. */
 static void call_interactions_without_wf(void) {
-    const size_t N[] = {4};
+    const uint64_t N[] = {4};
     const f64    L[] = {1.0};
     f64 g = 1.0;
     bdg_t *bdg = bdg_alloc(1, N, L, 0);
@@ -599,7 +600,7 @@ TEST(state_validation) {
  * re-run with different params → verify new values
  * ---------------------------------------------------------------- */
 TEST(reset_and_rerun) {
-    const size_t N[] = {8};
+    const uint64_t N[] = {8};
     const f64    L[] = {4.0};
 
     bdg_t *bdg = bdg_alloc(1, N, L, 0);
@@ -611,7 +612,7 @@ TEST(reset_and_rerun) {
         bdg_set_trap(bdg, harmonic_trap, &omega);
 
         f64 wf[8];
-        for (size_t i = 0; i < 8; i++) wf[i] = 1.0;
+        for (uint64_t i = 0; i < 8; i++) wf[i] = 1.0;
         bdg_set_wavefunction(bdg, wf, 8);
 
         f64 g = 1.0;
@@ -644,7 +645,7 @@ TEST(reset_and_rerun) {
     ASSERT(NULL == bdg->modes_v);
 
     /* Verify localTermK/M zeroed */
-    for (size_t i = 0; i < 8; i++) {
+    for (uint64_t i = 0; i < 8; i++) {
         ASSERT_CLOSE(bdg->ctx->localTermK[i], 0.0, TOL);
         ASSERT_CLOSE(bdg->ctx->localTermM[i], 0.0, TOL);
     }
@@ -659,7 +660,7 @@ TEST(reset_and_rerun) {
         bdg_set_trap(bdg, harmonic_trap, &omega2);
 
         f64 wf2[8];
-        for (size_t i = 0; i < 8; i++) wf2[i] = 0.5;
+        for (uint64_t i = 0; i < 8; i++) wf2[i] = 0.5;
         bdg_set_wavefunction(bdg, wf2, 8);
 
         /* BDG_FORBID should NOT fire — interactions flag was cleared */
@@ -675,7 +676,7 @@ TEST(reset_and_rerun) {
     const f64 mu2 = 1.0;
     const f64 omega2 = 3.0;
 
-    for (size_t ix = 0; ix < 8; ix++) {
+    for (uint64_t ix = 0; ix < 8; ix++) {
         const f64 x = ((f64)ix - 4.0) * 4.0 / 8.0;
         const f64 V = 0.5 * omega2 * omega2 * x * x;
         /* K = V + g*n - mu;  M = V + 3*g*n - mu */
@@ -690,7 +691,7 @@ TEST(reset_and_rerun) {
 
     /* Verify wf was set correctly */
     const f64 *wf_stored = (const f64 *)ctx->wf;
-    for (size_t i = 0; i < 8; i++)
+    for (uint64_t i = 0; i < 8; i++)
         ASSERT_CLOSE(wf_stored[i], 0.5, TOL);
 
     bdg_free(&bdg);

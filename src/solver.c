@@ -1,5 +1,6 @@
 #include "bdg_internal.h"
 #include "lobpcg.h"
+#include <time.h>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -106,11 +107,11 @@ int bdg_solve_d(bdg_t *bdg) {
     /* fallthrough */
   case BDG_INIT_WF_WEIGHTED: {
     const f64 *wf = (const f64 *)ctx->wf;
-    uint32_t seed = 42;
+    uint32_t seed = time(NULL);
     for (uint64_t j = 0; j < sizeSub; j++) {
       for (uint64_t i = 0; i < size; i++) {
-        f64 u1 = xrand(&seed);
-        f64 u2 = xrand(&seed);
+        f64 u1 = (f64) rand_r(&seed)/RAND_MAX;//xrand(&seed);
+        f64 u2 = (f64) rand_r(&seed)/RAND_MAX;//xrand(&seed);
         u1 = fmax(u1, 1e-10);
         const f64 val = fabs(sqrt(-2.0 * log(u1)) * cos(2.0 * M_PI * u2))
                       * ((NULL != wf) ? fabs(wf[i]) : 1.0);
@@ -216,7 +217,7 @@ int bdg_solve_z(bdg_t *bdg) {
   LinearOperator_z_t *A = linop_create_z(n, n, matvec_lrep_z, NULL, &linop_ctx);
   LinearOperator_z_t *B = linop_create_z(n, n, matvec_swap_z, NULL, &linop_ctx);
   LinearOperator_z_t *T = linop_create_z(n, n, matvec_precond_z, NULL, &linop_ctx);
-  printf("am in complex path\n");
+
   /* 4. Set solver parameters */
   alg->A = A;
   alg->B = B;

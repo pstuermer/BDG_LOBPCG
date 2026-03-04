@@ -22,8 +22,8 @@ void dipolar_set_kernel(matmul_ctx_t *ctx, f64 g_ddi, const f64 *dipole_dir,
                          f64 cutoff_radius) {
     ctx->g_ddi = g_ddi;
 
-    const size_t Nx = ctx->N[0], Ny = ctx->N[1], Nz = ctx->N[2];
-    const size_t N0k = ctx->complex_psi0 ? Nx : (Nx / 2 + 1);
+    const uint64_t Nx = ctx->N[0], Ny = ctx->N[1], Nz = ctx->N[2];
+    const uint64_t N0k = ctx->complex_psi0 ? Nx : (Nx / 2 + 1);
     const f64 dkx = 2.0 * M_PI / ctx->L[0];
     const f64 dky = 2.0 * M_PI / ctx->L[1];
     const f64 dkz = 2.0 * M_PI / ctx->L[2];
@@ -33,20 +33,20 @@ void dipolar_set_kernel(matmul_ctx_t *ctx, f64 g_ddi, const f64 *dipole_dir,
 
     ctx->longRngInt = xcalloc(ctx->k_size, sizeof(f64));
 
-    for (size_t iz = 0; iz < Nz; iz++) {
+    for (uint64_t iz = 0; iz < Nz; iz++) {
         const int fz = (iz <= Nz / 2) ? (int)iz : (int)iz - (int)Nz;
         const f64 kz = dkz * fz;
 
-        for (size_t iy = 0; iy < Ny; iy++) {
+        for (uint64_t iy = 0; iy < Ny; iy++) {
             const int fy = (iy <= Ny / 2) ? (int)iy : (int)iy - (int)Ny;
             const f64 ky = dky * fy;
 
-            for (size_t ix = 0; ix < N0k; ix++) {
+            for (uint64_t ix = 0; ix < N0k; ix++) {
                 const int fx = (ctx->complex_psi0 && ix > Nx / 2)
                              ? (int)ix - (int)Nx : (int)ix;
                 const f64 kx = dkx * fx;
 
-                const size_t idx = iz * Ny * N0k + iy * N0k + ix;
+                const uint64_t idx = iz * Ny * N0k + iy * N0k + ix;
                 const f64 ksq = kx * kx + ky * ky + kz * kz;
 
                 if (ksq < 1e-50) {

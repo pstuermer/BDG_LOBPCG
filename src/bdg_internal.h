@@ -70,11 +70,11 @@ static inline f64 xrand(uint32_t *state) {
 
 typedef struct {
     /* Grid geometry */
-    size_t dim;         /* 1, 2, or 3 */
-    size_t *N;          /* Grid points per dimension [dim] */
+    uint64_t dim;       /* 1, 2, or 3 */
+    uint64_t *N;        /* Grid points per dimension [dim] */
     f64    *L;          /* Box lengths per dimension [dim] */
-    size_t  size;       /* Product of N (total real-space grid points) */
-    size_t  k_size;     /* k-space size: reduced for r2c, == size for c2c */
+    uint64_t size;      /* Product of N (total real-space grid points) */
+    uint64_t k_size;    /* k-space size: reduced for r2c, == size for c2c */
 
     /* k-space arrays (persistent, read every matvec) */
     f64   *k2;          /* |k|^2, length k_size */
@@ -90,7 +90,7 @@ typedef struct {
 
     /* Wavefunction — void* because f64 (real) or c64 (complex) */
     void  *wf;
-    size_t wf_size;     /* == size */
+    uint64_t wf_size;   /* == size */
 
     /* FFTW plans (no mode_t wrapper) */
     fftw_plan fwd_plan; /* r2c (real path) or c2c forward (complex path) */
@@ -123,9 +123,9 @@ struct bdg_t {
     uint32_t state;     /* Bitmask of BDG_HAS_* flags (zeroed by xcalloc) */
 
     /* Solver parameters */
-    size_t nev;
-    size_t sizeSub;
-    size_t maxIter;
+    uint64_t nev;
+    uint64_t sizeSub;
+    uint64_t maxIter;
     f64    tol;
     int    complex_psi0; /* 0 = real (d_ilobpcg), 1 = complex (z_ilobpcg) */
 
@@ -133,7 +133,7 @@ struct bdg_t {
     f64   *eigvals;     /* nev eigenvalues (always real) */
     void  *modes_u;     /* f64* or c64*, size*nev, column-major */
     void  *modes_v;     /* f64* or c64*, size*nev, column-major */
-    size_t converged;
+    uint64_t converged;
 
     /* Init strategy (survives bdg_reset) */
     bdg_init_mode_t init_mode;       /* default: BDG_INIT_DEFAULT (0 from xcalloc) */
@@ -148,7 +148,7 @@ struct bdg_t {
  * matmul_ctx allocation
  * ================================================================ */
 
-matmul_ctx_t *matmul_ctx_alloc(size_t dim, const size_t *N, const f64 *L);
+matmul_ctx_t *matmul_ctx_alloc(uint64_t dim, const uint64_t *N, const f64 *L);
 void          matmul_ctx_free(matmul_ctx_t **ctx);
 void          matmul_ctx_set_system(matmul_ctx_t *ctx, int complex_psi0);
 

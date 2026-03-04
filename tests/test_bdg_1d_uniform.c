@@ -1,10 +1,11 @@
 #include "bdg/bdg.h"
 #include "lobpcg/types.h"
+#include <complex.h>
+#include <inttypes.h>
+#include <math.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
-#include <complex.h>
-#include <stdint.h>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -61,7 +62,6 @@ TEST(bdg_1d_uniform_d_bogoliubov_spectrum) {
     const f64 L = 2.0 * M_PI;
     const f64 n0 = 1.0;
     const f64 mu = g_contact * n0;  /* = 1.0 */
-    const size_t N_val = (size_t)N;
     const uint64_t nev = 4;
 
     /* Analytical Bogoliubov spectrum:
@@ -79,9 +79,9 @@ TEST(bdg_1d_uniform_d_bogoliubov_spectrum) {
     printf("\n    analytical: E(k=0)=0, E(k=1)=%.10f, E(k=2)=%.10f\n", E1, E2);
 
     /* Setup */
-    bdg_t *bdg = bdg_alloc(1, &N_val, &L, 0);
+    bdg_t *bdg = bdg_alloc(1, &N, &L, 0);
     bdg_set_system(bdg);
-    bdg_set_solver_params(bdg, (size_t)nev, 10, 200, 1e-4);
+    bdg_set_solver_params(bdg, nev, 10, 200, 1e-4);
 
     f64 *wf = calloc(N, sizeof(f64));
     ASSERT(NULL != wf);
@@ -89,7 +89,7 @@ TEST(bdg_1d_uniform_d_bogoliubov_spectrum) {
     for (uint64_t i = 0; i < N; i++)
         wf[i] = sqrt_n0;
 
-    bdg_set_wavefunction(bdg, wf, (size_t)N);
+    bdg_set_wavefunction(bdg, wf, N);
     free(wf);
 
     bdg_set_local_interactions(bdg, U_intK_cb, U_intM_cb, NULL);
@@ -99,8 +99,8 @@ TEST(bdg_1d_uniform_d_bogoliubov_spectrum) {
     const int ret = bdg_solve(bdg);
     ASSERT(0 == ret);
 
-    const size_t nconv = bdg_converged(bdg);
-    printf("    converged: %zu / %zu\n", nconv, (size_t)nev);
+    const uint64_t nconv = bdg_converged(bdg);
+    printf("    converged: %" PRIu64 " / %" PRIu64 "\n", nconv, nev);
     ASSERT(nconv >= nev);
 
     const f64 *evals = bdg_eigenvalues(bdg);
@@ -144,7 +144,6 @@ TEST(bdg_1d_uniform_z_matches_d) {
     const f64 L = 2.0 * M_PI;
     const f64 n0 = 1.0;
     const f64 mu = g_contact * n0;
-    const size_t N_val = (size_t)N;
     const uint64_t nev = 4;
 
     const f64 ek1 = 0.5;
@@ -152,16 +151,16 @@ TEST(bdg_1d_uniform_z_matches_d) {
     const f64 rel_tol = 0.01;
 
     /* --- Solve real path --- */
-    bdg_t *bdg_d = bdg_alloc(1, &N_val, &L, 0);
+    bdg_t *bdg_d = bdg_alloc(1, &N, &L, 0);
     bdg_set_system(bdg_d);
-    bdg_set_solver_params(bdg_d, (size_t)nev, 10, 200, 1e-4);
+    bdg_set_solver_params(bdg_d, nev, 10, 200, 1e-4);
 
     f64 *wf_d = calloc(N, sizeof(f64));
     ASSERT(NULL != wf_d);
     const f64 sqrt_n0 = sqrt(n0);
     for (uint64_t i = 0; i < N; i++)
         wf_d[i] = sqrt_n0;
-    bdg_set_wavefunction(bdg_d, wf_d, (size_t)N);
+    bdg_set_wavefunction(bdg_d, wf_d, N);
     free(wf_d);
 
     bdg_set_local_interactions(bdg_d, U_intK_cb, U_intM_cb, NULL);
@@ -175,15 +174,15 @@ TEST(bdg_1d_uniform_z_matches_d) {
     ASSERT(NULL != evals_d);
 
     /* --- Solve complex path --- */
-    bdg_t *bdg_z = bdg_alloc(1, &N_val, &L, 1);
+    bdg_t *bdg_z = bdg_alloc(1, &N, &L, 1);
     bdg_set_system(bdg_z);
-    bdg_set_solver_params(bdg_z, (size_t)nev, 10, 200, 1e-4);
+    bdg_set_solver_params(bdg_z, nev, 10, 200, 1e-4);
 
     c64 *wf_z = calloc(N, sizeof(c64));
     ASSERT(NULL != wf_z);
     for (uint64_t i = 0; i < N; i++)
         wf_z[i] = sqrt_n0 + 0.0 * I;
-    bdg_set_wavefunction(bdg_z, wf_z, (size_t)N);
+    bdg_set_wavefunction(bdg_z, wf_z, N);
     free(wf_z);
 
     bdg_set_local_interactions(bdg_z, U_intK_cb, U_intM_cb, NULL);

@@ -1,9 +1,10 @@
 #include "bdg/bdg.h"
 #include "lobpcg/types.h"
-#include <stdio.h>
-#include <stdlib.h>
+#include <inttypes.h>
 #include <math.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 static int tests_passed = 0;
 static int tests_failed = 0;
@@ -37,10 +38,10 @@ static int tests_failed = 0;
 
 /* ── trap callback ────────────────────────────────────────── */
 
-static f64 V_harmonic(size_t dim, const f64 *r, void *param) {
+static f64 V_harmonic(uint64_t dim, const f64 *r, void *param) {
   (void)param;
   f64 rsq = 0.0;
-  for (size_t d = 0; d < dim; d++)
+  for (uint64_t d = 0; d < dim; d++)
     rsq += r[d] * r[d];
   return 0.5 * rsq;
 }
@@ -58,12 +59,12 @@ TEST(bdg_3d_harmonic_excitations) {
    *   - Goldstone-like mode at ~0 (from ground state)
    *   - First excited: omega = 1.0 (3-fold degenerate: nx=1, ny=1, nz=1)
    */
-  const size_t N[3] = {64, 64, 64};
+  const uint64_t N[3] = {64, 64, 64};
   const f64 L[3] = {10.0, 10.0, 10.0};
   const f64 mu = 1.5;
-  const size_t nev = 10;
-  const size_t sizeSub = 20;
-  const size_t maxIter = 500;
+  const uint64_t nev = 10;
+  const uint64_t sizeSub = 20;
+  const uint64_t maxIter = 500;
   const f64 tol = 1e-4;
 
   /* Setup: no wavefunction, no interactions, no dipolar */
@@ -78,8 +79,8 @@ TEST(bdg_3d_harmonic_excitations) {
   printf("\n    bdg_solve returned: %d\n", ret);
   ASSERT(0 == ret);
 
-  const size_t nconv = bdg_converged(bdg);
-  printf("    converged: %zu / %zu\n", nconv, nev);
+  const uint64_t nconv = bdg_converged(bdg);
+  printf("    converged: %" PRIu64 " / %" PRIu64 "\n", nconv, nev);
   ASSERT(nconv >= nev);
 
   const f64 *evals = bdg_eigenvalues(bdg);

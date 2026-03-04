@@ -52,7 +52,7 @@ TEST(load_wf_real) {
   fprintf(f, "4.0 0.0\n");
   fclose(f);
 
-  const size_t N[] = {4};
+  const uint64_t N[] = {4};
   const f64 L[] = {1.0};
   bdg_t *bdg = bdg_alloc(1, N, L, 0);
   bdg_set_system(bdg);
@@ -79,7 +79,7 @@ TEST(load_wf_complex) {
   fprintf(f, "2.0 -0.5\n");
   fclose(f);
 
-  const size_t N[] = {2};
+  const uint64_t N[] = {2};
   const f64 L[] = {1.0};
   bdg_t *bdg = bdg_alloc(1, N, L, 1);
   bdg_set_system(bdg);
@@ -99,7 +99,7 @@ TEST(load_wf_complex) {
 }
 
 TEST(load_wf_file_not_found) {
-  const size_t N[] = {4};
+  const uint64_t N[] = {4};
   const f64 L[] = {1.0};
   bdg_t *bdg = bdg_alloc(1, N, L, 0);
   bdg_set_system(bdg);
@@ -121,7 +121,7 @@ TEST(load_wf_fmt) {
   fprintf(f, "1.5 0.0\n2.5 0.0\n");
   fclose(f);
 
-  const size_t N[] = {2};
+  const uint64_t N[] = {2};
   const f64 L[] = {1.0};
   bdg_t *bdg = bdg_alloc(1, N, L, 0);
   bdg_set_system(bdg);
@@ -146,7 +146,7 @@ TEST(write_eigenvalues) {
   const char *fname = "/tmp/test_write_eigvals.dat";
   unlink(fname);
 
-  const size_t N[] = {4};
+  const uint64_t N[] = {4};
   const f64 L[] = {1.0};
   bdg_t *bdg = bdg_alloc(1, N, L, 0);
   bdg_set_system(bdg);
@@ -192,7 +192,7 @@ TEST(write_mode_1d_real) {
   const char *fname_base = "/tmp/test_mode_1d";
   const char *fname_u = "/tmp/test_mode_1d_u_0.dat";
 
-  const size_t N[] = {4};
+  const uint64_t N[] = {4};
   const f64 L[] = {1.0};
   bdg_t *bdg = bdg_alloc(1, N, L, 0);
   bdg_set_system(bdg);
@@ -229,7 +229,7 @@ TEST(write_mode_2d_real) {
   const char *fname_base = "/tmp/test_mode_2d";
   const char *fname_u = "/tmp/test_mode_2d_u_0.dat";
 
-  const size_t N[] = {3, 2};
+  const uint64_t N[] = {3, 2};
   const f64 L[] = {1.0, 1.0};
   bdg_t *bdg = bdg_alloc(2, N, L, 0);
   bdg_set_system(bdg);
@@ -283,7 +283,7 @@ TEST(write_mode_2d_real) {
 }
 
 TEST(write_mode_out_of_range) {
-  const size_t N[] = {4};
+  const uint64_t N[] = {4};
   const f64 L[] = {1.0};
   bdg_t *bdg = bdg_alloc(1, N, L, 0);
   bdg_set_system(bdg);
@@ -305,7 +305,7 @@ TEST(write_mode_out_of_range) {
  * ================================================================ */
 
 TEST(set_init_mode) {
-  const size_t N[] = {4};
+  const uint64_t N[] = {4};
   const f64 L[] = {1.0};
   bdg_t *bdg = bdg_alloc(1, N, L, 0);
 
@@ -319,7 +319,7 @@ TEST(set_init_mode) {
 }
 
 TEST(reuse_modes_no_results) {
-  const size_t N[] = {4};
+  const uint64_t N[] = {4};
   const f64 L[] = {1.0};
   bdg_t *bdg = bdg_alloc(1, N, L, 0);
 
@@ -330,7 +330,7 @@ TEST(reuse_modes_no_results) {
 }
 
 TEST(reuse_modes_packs_buffer) {
-  const size_t N[] = {4};
+  const uint64_t N[] = {4};
   const f64 L[] = {1.0};
   bdg_t *bdg = bdg_alloc(1, N, L, 0);
   bdg_set_system(bdg);
@@ -368,7 +368,7 @@ TEST(reuse_modes_packs_buffer) {
 }
 
 TEST(init_survives_reset) {
-  const size_t N[] = {4};
+  const uint64_t N[] = {4};
   const f64 L[] = {1.0};
   bdg_t *bdg = bdg_alloc(1, N, L, 0);
   bdg_set_system(bdg);
@@ -388,7 +388,7 @@ static f64 sweep_U_K(void *p, f64 n) { return (*(f64 *)p) * n; }
 static f64 sweep_U_M(void *p, f64 n) { return (*(f64 *)p) * n; }
 
 TEST(sweep_reuse_1d) {
-  const size_t N[] = {32};
+  const uint64_t N[] = {32};
   const f64 L[] = {10.0};
   const uint64_t size = 32;
   const f64 g = 1.0;

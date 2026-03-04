@@ -80,7 +80,7 @@ static int write_mode_impl(const bdg_t *bdg, uint64_t mode_idx,
 
   const uint64_t size = bdg->ctx->size;
   const uint64_t dim = bdg->ctx->dim;
-  const size_t *N = bdg->ctx->N;
+  const uint64_t *N = bdg->ctx->N;
 
   if (0 == bdg->complex_psi0) {
     const f64 *mode = (const f64 *)modes + mode_idx * size;

@@ -21,7 +21,7 @@ static f64 U_intM(void *param, const f64 density) {
   return p[0] * density + 1.5 * p[1] * apsi * density;
 }
 
-static f64 V_trap(size_t dim, const f64 *r, void *param) {
+static f64 V_trap(uint64_t dim, const f64 *r, void *param) {
   (void)dim; (void)param;
   const f64 omega_unit = 2.0 * M_PI * 162 * MASS_UNIT * 1.0e-12 / HBAR;
   const f64 omega_trap = 155.0 * omega_unit;
@@ -33,7 +33,7 @@ static f64 V_trap(size_t dim, const f64 *r, void *param) {
 }
 
 int main(void) {
-  const size_t N[3] = {256, 256, 128};
+  const uint64_t N[3] = {256, 256, 128};
   const f64 L[3] = {45.0, 45.0, 45.0};
 
   const f64 a_unit = BOHR_RADIUS * 1.0e6;
@@ -49,14 +49,14 @@ int main(void) {
   const f64 dir_ddi[3] = {0.0, 0.0, 1.0};
   const f64 cutoff_R = 0.5 * L[0];
 
-  bdg_t *bdg = bdg_alloc(3, N, L, 1);
+  bdg_t *bdg = bdg_alloc(3, N, L, 0);
   bdg_set_system(bdg);
   bdg_set_trap(bdg, V_trap, NULL);
-  bdg_load_wavefunction(bdg, "3d_dipolar_wf.dat");
+  bdg_load_wavefunction(bdg, "examples/3d_dipolar_wf.dat");
   bdg_set_local_interactions(bdg, U_intK, U_intM, param);
   bdg_set_dipolar(bdg, g_ddi, dir_ddi, cutoff_R);
   bdg_set_mu(bdg, 110.14092367);
-  bdg_set_solver_params(bdg, 20, 30, 1000, 1.0e-6);
+  bdg_set_solver_params(bdg, 20, 30, 1000, 1.0e-5);
   bdg_set_init_mode(bdg, BDG_INIT_DEFAULT, NULL, NULL);
 
   const f64 start = omp_get_wtime();
@@ -65,7 +65,7 @@ int main(void) {
 
   printf("bdg_solve returned %d\n", ret);
   if (0 == ret) {
-    const size_t nconv = bdg_converged(bdg);
+    const uint64_t nconv = bdg_converged(bdg);
     const f64 *evals = bdg_eigenvalues(bdg);
     printf("converged: %zu / 20\n", nconv);
     for (uint64_t j = 0; j < 20; j++)

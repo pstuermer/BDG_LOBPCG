@@ -21,7 +21,7 @@ static f64 U_intM(void *param, const f64 density) {
   return p[0] * density + 1.5 * p[1] * apsi * density;
 }
 
-static f64 V_trap(size_t dim, const f64 *r, void *param) {
+static f64 V_trap(uint64_t dim, const f64 *r, void *param) {
   (void)dim; (void)param;
   const f64 omega_unit = 2.0 * M_PI * 164 * MASS_UNIT * 1.0e-12 / HBAR;
   const f64 omega_trap = 30.0 * omega_unit;
@@ -53,7 +53,7 @@ int main(void) {
   bdg_t *bdg = bdg_alloc(dim, N, L, 0);
   bdg_set_system(bdg);
   bdg_set_trap(bdg, V_trap, NULL);
-  bdg_load_wavefunction(bdg, "3d_jens_wf.dat");
+  bdg_load_wavefunction(bdg, "examples/3d_jens_wf.dat");
   bdg_set_local_interactions(bdg, U_intK, U_intM, param);
   bdg_set_dipolar(bdg, g_ddi, dir_ddi, cutoff_R);
   // needs to be set last

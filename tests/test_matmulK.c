@@ -1,5 +1,6 @@
 #include "bdg_internal.h"
 #include <math.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -40,20 +41,20 @@ static int tests_failed = 0;
 /* ================================================================
  * Helper: create a 1D matmul_ctx_t with constant localTermK = V0 - mu
  * ================================================================ */
-static matmul_ctx_t *make_1d_ctx(const size_t N, const f64 Lval,
+static matmul_ctx_t *make_1d_ctx(const uint64_t N, const f64 Lval,
                                  const int complex_psi0,
                                  const f64 V0, const f64 mu) {
-    const size_t Narr[] = {N};
+    const uint64_t Narr[] = {N};
     const f64    Larr[] = {Lval};
     matmul_ctx_t *ctx = matmul_ctx_alloc(1, Narr, Larr);
     matmul_ctx_set_system(ctx, complex_psi0);
 
-    const size_t size = ctx->size;
+    const uint64_t size = ctx->size;
     ctx->localTermK = xcalloc(size, sizeof(f64));
     ctx->localTermM = xcalloc(size, sizeof(f64));
 
     const f64 val = V0 - mu;
-    for (size_t i = 0; i < size; i++) {
+    for (uint64_t i = 0; i < size; i++) {
         ctx->localTermK[i] = val;
         ctx->localTermM[i] = val;
     }
@@ -70,19 +71,19 @@ TEST(matmulK_d_planewave_1d) {
     const f64 mu = 0.0;
     matmul_ctx_t *ctx = make_1d_ctx(64, 2.0 * M_PI, 0, V0, mu);
 
-    const size_t size = ctx->size;
+    const uint64_t size = ctx->size;
     f64 *x = xcalloc(size, sizeof(f64));
     f64 *y = xcalloc(size, sizeof(f64));
 
     const f64 L = 2.0 * M_PI;
-    for (size_t i = 0; i < size; i++) {
+    for (uint64_t i = 0; i < size; i++) {
         const f64 xj = (f64)i * L / (f64)size;
         x[i] = cos(xj);
     }
 
     matmulK_d(ctx, x, y);
 
-    for (size_t i = 0; i < size; i++) {
+    for (uint64_t i = 0; i < size; i++) {
         const f64 xj = (f64)i * L / (f64)size;
         ASSERT_CLOSE(y[i], 2.5 * cos(xj), TOL);
     }
@@ -101,16 +102,16 @@ TEST(matmulK_d_constant) {
     const f64 mu = 1.0;
     matmul_ctx_t *ctx = make_1d_ctx(32, 2.0 * M_PI, 0, V0, mu);
 
-    const size_t size = ctx->size;
+    const uint64_t size = ctx->size;
     f64 *x = xcalloc(size, sizeof(f64));
     f64 *y = xcalloc(size, sizeof(f64));
 
-    for (size_t i = 0; i < size; i++)
+    for (uint64_t i = 0; i < size; i++)
         x[i] = 1.0;
 
     matmulK_d(ctx, x, y);
 
-    for (size_t i = 0; i < size; i++)
+    for (uint64_t i = 0; i < size; i++)
         ASSERT_CLOSE(y[i], 2.0, TOL);
 
     safe_free((void **)&x);
@@ -124,7 +125,7 @@ TEST(matmulK_d_constant) {
 TEST(matmulK_dz_consistency) {
     const f64 V0 = 2.0;
     const f64 mu = 0.5;
-    const size_t N = 64;
+    const uint64_t N = 64;
     const f64 L = 2.0 * M_PI;
 
     /* Real path */
@@ -132,7 +133,7 @@ TEST(matmulK_dz_consistency) {
     f64 *xd = xcalloc(N, sizeof(f64));
     f64 *yd = xcalloc(N, sizeof(f64));
 
-    for (size_t i = 0; i < N; i++) {
+    for (uint64_t i = 0; i < N; i++) {
         const f64 xj = (f64)i * L / (f64)N;
         xd[i] = cos(xj);
     }
@@ -143,14 +144,14 @@ TEST(matmulK_dz_consistency) {
     c64 *xz = xcalloc(N, sizeof(c64));
     c64 *yz = xcalloc(N, sizeof(c64));
 
-    for (size_t i = 0; i < N; i++) {
+    for (uint64_t i = 0; i < N; i++) {
         const f64 xj = (f64)i * L / (f64)N;
         xz[i] = cos(xj) + 0.0 * I;
     }
     matmulK_z(ctx_z, xz, yz);
 
     /* Compare: real parts must match, imag parts ~ 0 */
-    for (size_t i = 0; i < N; i++) {
+    for (uint64_t i = 0; i < N; i++) {
         ASSERT_CLOSE(creal(yz[i]), yd[i], TOL);
         ASSERT_CLOSE(cimag(yz[i]), 0.0, TOL);
     }
@@ -169,18 +170,18 @@ TEST(matmulK_dz_consistency) {
  * K = (1.5 + 1)*cos(x+y+z) = 2.5*cos(x+y+z)
  * ================================================================ */
 TEST(matmulK_d_3d) {
-    const size_t N[] = {16, 16, 16};
+    const uint64_t N[] = {16, 16, 16};
     const f64    L[] = {2.0 * M_PI, 2.0 * M_PI, 2.0 * M_PI};
     matmul_ctx_t *ctx = matmul_ctx_alloc(3, N, L);
     matmul_ctx_set_system(ctx, 0);
 
-    const size_t size = ctx->size;
-    const size_t Nx = N[0], Ny = N[1], Nz = N[2];
+    const uint64_t size = ctx->size;
+    const uint64_t Nx = N[0], Ny = N[1], Nz = N[2];
     const f64 V0 = 1.0;
 
     ctx->localTermK = xcalloc(size, sizeof(f64));
     ctx->localTermM = xcalloc(size, sizeof(f64));
-    for (size_t i = 0; i < size; i++) {
+    for (uint64_t i = 0; i < size; i++) {
         ctx->localTermK[i] = V0;
         ctx->localTermM[i] = V0;
     }
@@ -188,9 +189,9 @@ TEST(matmulK_d_3d) {
     f64 *x = xcalloc(size, sizeof(f64));
     f64 *y = xcalloc(size, sizeof(f64));
 
-    for (size_t iz = 0; iz < Nz; iz++)
-        for (size_t iy = 0; iy < Ny; iy++)
-            for (size_t ix = 0; ix < Nx; ix++) {
+    for (uint64_t iz = 0; iz < Nz; iz++)
+        for (uint64_t iy = 0; iy < Ny; iy++)
+            for (uint64_t ix = 0; ix < Nx; ix++) {
                 const f64 xv = (f64)ix * L[0] / (f64)Nx;
                 const f64 yv = (f64)iy * L[1] / (f64)Ny;
                 const f64 zv = (f64)iz * L[2] / (f64)Nz;
@@ -199,13 +200,13 @@ TEST(matmulK_d_3d) {
 
     matmulK_d(ctx, x, y);
 
-    for (size_t iz = 0; iz < Nz; iz++)
-        for (size_t iy = 0; iy < Ny; iy++)
-            for (size_t ix = 0; ix < Nx; ix++) {
+    for (uint64_t iz = 0; iz < Nz; iz++)
+        for (uint64_t iy = 0; iy < Ny; iy++)
+            for (uint64_t ix = 0; ix < Nx; ix++) {
                 const f64 xv = (f64)ix * L[0] / (f64)Nx;
                 const f64 yv = (f64)iy * L[1] / (f64)Ny;
                 const f64 zv = (f64)iz * L[2] / (f64)Nz;
-                const size_t idx = iz * Ny * Nx + iy * Nx + ix;
+                const uint64_t idx = iz * Ny * Nx + iy * Nx + ix;
                 ASSERT_CLOSE(y[idx], 2.5 * cos(xv + yv + zv), TOL);
             }
 

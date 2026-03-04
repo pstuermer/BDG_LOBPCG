@@ -1,8 +1,9 @@
 #include "bdg_internal.h"
+#include <complex.h>
 #include <math.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-#include <complex.h>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -41,17 +42,17 @@ static int tests_failed = 0;
 /* ================================================================
  * Helper: create a 1D matmul_ctx_t with constant localTermK=VK, localTermM=VM
  * ================================================================ */
-static matmul_ctx_t *make_1d_ctx(const size_t N, const f64 L,
+static matmul_ctx_t *make_1d_ctx(const uint64_t N, const f64 L,
                                   const int complex_psi0,
                                   const f64 VK, const f64 VM) {
-    const size_t Narr[] = {N};
+    const uint64_t Narr[] = {N};
     const f64    Larr[] = {L};
     matmul_ctx_t *ctx = matmul_ctx_alloc(1, Narr, Larr);
     matmul_ctx_set_system(ctx, complex_psi0);
 
     ctx->localTermK = xcalloc(ctx->size, sizeof(f64));
     ctx->localTermM = xcalloc(ctx->size, sizeof(f64));
-    for (size_t i = 0; i < ctx->size; i++) {
+    for (uint64_t i = 0; i < ctx->size; i++) {
         ctx->localTermK[i] = VK;
         ctx->localTermM[i] = VM;
     }
@@ -65,16 +66,16 @@ static matmul_ctx_t *make_1d_ctx(const size_t N, const f64 L,
  * ================================================================ */
 TEST(matmulM_d_planewave_no_dipolar) {
     matmul_ctx_t *ctx = make_1d_ctx(64, 2.0 * M_PI, 0, 0.0, 2.0);
-    const size_t size = ctx->size;
+    const uint64_t size = ctx->size;
     f64 *x = xcalloc(size, sizeof(f64));
     f64 *y = xcalloc(size, sizeof(f64));
 
-    for (size_t i = 0; i < size; i++)
+    for (uint64_t i = 0; i < size; i++)
         x[i] = cos((f64)i * 2.0 * M_PI / (f64)size);
 
     matmulM_d(ctx, x, y);
 
-    for (size_t i = 0; i < size; i++) {
+    for (uint64_t i = 0; i < size; i++) {
         const f64 expected = 2.5 * cos((f64)i * 2.0 * M_PI / (f64)size);
         ASSERT_CLOSE(y[i], expected, TOL);
     }
@@ -90,20 +91,20 @@ TEST(matmulM_d_planewave_no_dipolar) {
 TEST(matmulM_matches_K_no_dipolar) {
     matmul_ctx_t *ctx_K = make_1d_ctx(64, 2.0 * M_PI, 0, 1.5, 1.5);
     matmul_ctx_t *ctx_M = make_1d_ctx(64, 2.0 * M_PI, 0, 1.5, 1.5);
-    const size_t size = ctx_K->size;
+    const uint64_t size = ctx_K->size;
 
     f64 *x  = xcalloc(size, sizeof(f64));
     f64 *yK = xcalloc(size, sizeof(f64));
     f64 *yM = xcalloc(size, sizeof(f64));
 
-    for (size_t i = 0; i < size; i++)
+    for (uint64_t i = 0; i < size; i++)
         x[i] = cos((f64)i * 2.0 * M_PI / (f64)size)
              + 0.5 * cos(3.0 * (f64)i * 2.0 * M_PI / (f64)size);
 
     matmulK_d(ctx_K, x, yK);
     matmulM_d(ctx_M, x, yM);
 
-    for (size_t i = 0; i < size; i++)
+    for (uint64_t i = 0; i < size; i++)
         ASSERT_CLOSE(yM[i], yK[i], TOL);
 
     safe_free((void **)&x);
@@ -117,7 +118,7 @@ TEST(matmulM_matches_K_no_dipolar) {
  * Test 3: M d vs z consistency (no dipolar)
  * ================================================================ */
 TEST(matmulM_dz_consistency) {
-    const size_t N = 64;
+    const uint64_t N = 64;
     const f64 L = 2.0 * M_PI;
 
     matmul_ctx_t *ctx_d = make_1d_ctx(N, L, 0, 0.0, 2.0);
@@ -128,7 +129,7 @@ TEST(matmulM_dz_consistency) {
     c64 *xz = xcalloc(N, sizeof(c64));
     c64 *yz = xcalloc(N, sizeof(c64));
 
-    for (size_t i = 0; i < N; i++) {
+    for (uint64_t i = 0; i < N; i++) {
         xd[i] = cos((f64)i * 2.0 * M_PI / (f64)N);
         xz[i] = xd[i] + 0.0 * I;
     }
@@ -136,7 +137,7 @@ TEST(matmulM_dz_consistency) {
     matmulM_d(ctx_d, xd, yd);
     matmulM_z(ctx_z, xz, yz);
 
-    for (size_t i = 0; i < N; i++) {
+    for (uint64_t i = 0; i < N; i++) {
         ASSERT_CLOSE(creal(yz[i]), yd[i], TOL);
         ASSERT_CLOSE(cimag(yz[i]), 0.0, TOL);
     }
@@ -156,23 +157,23 @@ TEST(matmulM_dz_consistency) {
  * kernel = 2*f_cutoff != 0, so the dipolar convolution is nonzero.
  * ================================================================ */
 TEST(matmulM_d_3d_with_dipolar) {
-    const size_t N[] = {8, 8, 8};
+    const uint64_t N[] = {8, 8, 8};
     const f64    L[] = {2.0 * M_PI, 2.0 * M_PI, 2.0 * M_PI};
     matmul_ctx_t *ctx = matmul_ctx_alloc(3, N, L);
     matmul_ctx_set_system(ctx, 0);
-    const size_t size = ctx->size;
+    const uint64_t size = ctx->size;
 
     /* Constant local terms, same for K and M */
     ctx->localTermK = xcalloc(size, sizeof(f64));
     ctx->localTermM = xcalloc(size, sizeof(f64));
-    for (size_t i = 0; i < size; i++) {
+    for (uint64_t i = 0; i < size; i++) {
         ctx->localTermK[i] = 1.0;
         ctx->localTermM[i] = 1.0;
     }
 
     /* Uniform wf */
     ctx->wf = xcalloc(size, sizeof(f64));
-    for (size_t i = 0; i < size; i++)
+    for (uint64_t i = 0; i < size; i++)
         ((f64 *)ctx->wf)[i] = 1.0;
 
     /* Set dipolar kernel */
@@ -185,9 +186,9 @@ TEST(matmulM_d_3d_with_dipolar) {
     f64 *yK = xcalloc(size, sizeof(f64));
     f64 *yM = xcalloc(size, sizeof(f64));
 
-    for (size_t iz = 0; iz < N[2]; iz++)
-        for (size_t iy = 0; iy < N[1]; iy++)
-            for (size_t ix = 0; ix < N[0]; ix++) {
+    for (uint64_t iz = 0; iz < N[2]; iz++)
+        for (uint64_t iy = 0; iy < N[1]; iy++)
+            for (uint64_t ix = 0; ix < N[0]; ix++) {
                 const f64 zv = (f64)iz * L[2] / (f64)N[2];
                 x[iz * N[1] * N[0] + iy * N[0] + ix] = cos(zv);
             }
@@ -197,7 +198,7 @@ TEST(matmulM_d_3d_with_dipolar) {
 
     /* K and M should differ because dipolar term is nonzero for cos(z) */
     f64 max_diff = 0.0;
-    for (size_t i = 0; i < size; i++) {
+    for (uint64_t i = 0; i < size; i++) {
         const f64 diff = fabs(yM[i] - yK[i]);
         if (diff > max_diff) max_diff = diff;
     }
@@ -213,14 +214,14 @@ TEST(matmulM_d_3d_with_dipolar) {
  * Test 5: M with dipolar d vs z consistency in 3D
  * ================================================================ */
 TEST(matmulM_dz_3d_dipolar_consistency) {
-    const size_t N[] = {8, 8, 8};
+    const uint64_t N[] = {8, 8, 8};
     const f64    L[] = {2.0 * M_PI, 2.0 * M_PI, 2.0 * M_PI};
 
     matmul_ctx_t *ctx_d = matmul_ctx_alloc(3, N, L);
     matmul_ctx_set_system(ctx_d, 0);
     matmul_ctx_t *ctx_z = matmul_ctx_alloc(3, N, L);
     matmul_ctx_set_system(ctx_z, 1);
-    const size_t size = ctx_d->size;
+    const uint64_t size = ctx_d->size;
 
     ctx_d->localTermK = xcalloc(size, sizeof(f64));
     ctx_d->localTermM = xcalloc(size, sizeof(f64));
@@ -229,7 +230,7 @@ TEST(matmulM_dz_3d_dipolar_consistency) {
     ctx_z->localTermM = xcalloc(size, sizeof(f64));
     ctx_z->wf = xcalloc(size, sizeof(c64));
 
-    for (size_t i = 0; i < size; i++) {
+    for (uint64_t i = 0; i < size; i++) {
         ctx_d->localTermK[i] = 1.0;
         ctx_d->localTermM[i] = 1.5;
         ctx_z->localTermK[i] = 1.0;
@@ -250,7 +251,7 @@ TEST(matmulM_dz_3d_dipolar_consistency) {
     f64 *yd = xcalloc(size, sizeof(f64));
     c64 *yz = xcalloc(size, sizeof(c64));
 
-    for (size_t i = 0; i < size; i++) {
+    for (uint64_t i = 0; i < size; i++) {
         xd[i] = sin(2.0 * M_PI * (f64)(i % N[0]) / (f64)N[0]);
         xz[i] = xd[i] + 0.0 * I;
     }
@@ -258,7 +259,7 @@ TEST(matmulM_dz_3d_dipolar_consistency) {
     matmulM_d(ctx_d, xd, yd);
     matmulM_z(ctx_z, xz, yz);
 
-    for (size_t i = 0; i < size; i++) {
+    for (uint64_t i = 0; i < size; i++) {
         ASSERT_CLOSE(creal(yz[i]), yd[i], 1e-10);
         ASSERT_CLOSE(cimag(yz[i]), 0.0, 1e-10);
     }

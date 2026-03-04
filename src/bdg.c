@@ -13,7 +13,7 @@
 /* ----------------------------------------------------------------
  * bdg_alloc
  * ---------------------------------------------------------------- */
-bdg_t *bdg_alloc(size_t dim, const size_t *N, const f64 *L, int complex_psi0) {
+bdg_t *bdg_alloc(uint64_t dim, const uint64_t *N, const f64 *L, int complex_psi0) {
     bdg_t *bdg = xcalloc(1, sizeof(bdg_t));
     bdg->complex_psi0 = complex_psi0;
     bdg->ctx = matmul_ctx_alloc(dim, N, L);
@@ -89,8 +89,8 @@ void bdg_set_system(bdg_t *bdg) {
     bdg->state |= BDG_HAS_SYSTEM;
 }
 
-void bdg_set_solver_params(bdg_t *bdg, size_t nev, size_t sizeSub,
-                           size_t maxIter, f64 tol) {
+void bdg_set_solver_params(bdg_t *bdg, uint64_t nev, uint64_t sizeSub,
+                           uint64_t maxIter, f64 tol) {
     bdg->nev     = nev;
     bdg->sizeSub = sizeSub;
     bdg->maxIter = maxIter;
@@ -115,7 +115,7 @@ int bdg_reuse_modes(bdg_t *bdg, f64 noise_frac) {
   const uint64_t n = 2 * size;
   const uint64_t nev = bdg->nev;
   const uint64_t sizeSub = bdg->sizeSub;
-  const size_t elem = bdg->complex_psi0 ? sizeof(c64) : sizeof(f64);
+  const uint64_t elem = bdg->complex_psi0 ? sizeof(c64) : sizeof(f64);
 
   safe_free((void **)&bdg->reuse_buf);
   bdg->reuse_buf = xcalloc(n * sizeSub, elem);
@@ -219,7 +219,7 @@ int bdg_solve(bdg_t *bdg) {
 /* ----------------------------------------------------------------
  * Result accessors
  * ---------------------------------------------------------------- */
-size_t bdg_converged(const bdg_t *bdg) {
+uint64_t bdg_converged(const bdg_t *bdg) {
     return bdg->converged;
 }
 

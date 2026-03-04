@@ -3,7 +3,6 @@
 
 #include "lobpcg/types.h"
 #include <stdarg.h>
-#include <stddef.h>
 #include <stdint.h>
 
 /**
@@ -59,7 +58,7 @@ typedef void (*bdg_init_fn)(const bdg_t *bdg, void *X,
  * @param L          Box lengths per dimension (array of length dim)
  * @param complex_psi0  0 = real wavefunction (d path), 1 = complex (z path)
  */
-bdg_t *bdg_alloc(size_t dim, const size_t *N, const f64 *L, int complex_psi0);
+bdg_t *bdg_alloc(uint64_t dim, const uint64_t *N, const f64 *L, int complex_psi0);
 
 /**
  * Free all resources. Sets *bdg = NULL.
@@ -96,15 +95,15 @@ void bdg_set_system(bdg_t *bdg);
  * @param param   User data passed to V_trap
  */
 void bdg_set_trap(bdg_t *bdg,
-                  f64 (*V_trap)(size_t dim, const f64 *r, void *param),
-                  void *param);
+                  f64 (*V_trap)(uint64_t dim, const f64 *r, const void *param),
+                  const void *param);
 
 /**
  * Set the condensate wavefunction (in-memory copy).
  * @param wf       Pointer to wavefunction data (f64* or c64* matching complex_psi0)
  * @param wf_size  Number of grid points (must equal product of N)
  */
-void bdg_set_wavefunction(bdg_t *bdg, const void *wf, size_t wf_size);
+void bdg_set_wavefunction(bdg_t *bdg, const void *wf, uint64_t wf_size);
 
 /**
  * Set local interaction terms. Two function pointers for BdG K/M asymmetry.
@@ -116,9 +115,9 @@ void bdg_set_wavefunction(bdg_t *bdg, const void *wf, size_t wf_size);
  * For LHY: U_intK and U_intM have different beyond-mean-field coefficients.
  */
 void bdg_set_local_interactions(bdg_t *bdg,
-                                f64 (*U_intK)(void *param, f64 density),
-                                f64 (*U_intM)(void *param, f64 density),
-                                void *param);
+                                f64 (*U_intK)(const void *param, f64 density),
+                                f64 (*U_intM)(const void *param, f64 density),
+                                const void *param);
 
 /**
  * Subtract chemical potential from both localTermK and localTermM.
@@ -148,8 +147,8 @@ void bdg_set_dipolar(bdg_t *bdg, f64 g_ddi, const f64 *dipole_dir, f64 cutoff_ra
  * @param maxIter  Maximum iterations
  * @param tol      Convergence tolerance on residual norms
  */
-void bdg_set_solver_params(bdg_t *bdg, size_t nev, size_t sizeSub,
-                           size_t maxIter, f64 tol);
+void bdg_set_solver_params(bdg_t *bdg, uint64_t nev, uint64_t sizeSub,
+                           uint64_t maxIter, f64 tol);
 
 /* ================================================================
  * Init strategy
@@ -185,7 +184,7 @@ int bdg_solve(bdg_t *bdg);
  * ================================================================ */
 
 /** Number of converged eigenvalues. */
-size_t bdg_converged(const bdg_t *bdg);
+uint64_t bdg_converged(const bdg_t *bdg);
 
 /** Array of nev eigenvalues (always real, sorted). */
 const f64 *bdg_eigenvalues(const bdg_t *bdg);
