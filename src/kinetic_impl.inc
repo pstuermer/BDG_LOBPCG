@@ -15,15 +15,15 @@
 #include <omp.h>
 
 void FN(kinetic)(matmul_ctx_t *ctx, const CTYPE *x, CTYPE *y) {
-    const size_t  k_size = ctx->k_size;
-    const f64     norm   = 0.5 / (f64)ctx->size;
-    const f64    *k2     = ctx->k2;
-    c64          *fk     = ctx->f_wrk;
+    const uint64_t k_size = ctx->k_size;
+    const f64 norm = 0.5 / (f64)ctx->size;
+    const f64 *k2 = ctx->k2;
+    c64 *fk = ctx->f_wrk;
 
     FN(fft_forward)(ctx, x);
 
 #pragma omp parallel for simd schedule(static)
-    for (size_t i = 0; i < k_size; i++)
+    for (uint64_t i = 0; i < k_size; i++)
         fk[i] *= k2[i] * norm;
 
     FN(fft_backward)(ctx, y);

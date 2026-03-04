@@ -154,18 +154,18 @@ void matmul_ctx_set_system(matmul_ctx_t *ctx, int complex_psi0) {
     /* c2c forward/backward */
     ctx->fwd_plan = fftw_plan_dft((int)ctx->dim, fftw_N,
 				  (fftw_complex *)ctx->c_wrk1, (fftw_complex *)ctx->f_wrk,
-				  FFTW_FORWARD, FFTW_MEASURE);
+				  FFTW_FORWARD, FFTW_PATIENT);
     ctx->bwd_plan = fftw_plan_dft((int)ctx->dim, fftw_N,
 				  (fftw_complex *)ctx->f_wrk, (fftw_complex *)ctx->c_wrk1,
-				  FFTW_BACKWARD, FFTW_MEASURE);
+				  FFTW_BACKWARD, FFTW_PATIENT | FFTW_DESTROY_INPUT);
   } else {
     /* r2c / c2r */
     ctx->fwd_plan = fftw_plan_dft_r2c((int)ctx->dim, fftw_N,
 				      (f64 *)ctx->c_wrk1, (fftw_complex *)ctx->f_wrk,
-				      FFTW_MEASURE);
+				      FFTW_PATIENT);
     ctx->bwd_plan = fftw_plan_dft_c2r((int)ctx->dim, fftw_N,
 				      (fftw_complex *)ctx->f_wrk, (f64 *)ctx->c_wrk1,
-				      FFTW_MEASURE);
+				      FFTW_PATIENT | FFTW_DESTROY_INPUT);
   }
   assert(NULL != ctx->fwd_plan);
   assert(NULL != ctx->bwd_plan);

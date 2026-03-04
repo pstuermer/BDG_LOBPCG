@@ -14,8 +14,8 @@
  * bdg_set_trap — add V_trap(r) to localTermK and localTermM
  * ---------------------------------------------------------------- */
 void bdg_set_trap(bdg_t *bdg,
-                  f64 (*V_trap)(size_t dim, const f64 *r, void *param),
-                  void *param) {
+                  f64 (*V_trap)(uint64_t dim, const f64 *r, void *param),
+                  const void *param) {
     BDG_REQUIRE(bdg, BDG_HAS_SYSTEM, "bdg_set_trap");
 
     if (NULL == V_trap) {
@@ -28,9 +28,9 @@ void bdg_set_trap(bdg_t *bdg,
     f64 *const ltM = ctx->localTermM;
 
     if (1 == ctx->dim) {
-        const size_t Nx = ctx->N[0];
+        const uint64_t Nx = ctx->N[0];
         const f64    Lx = ctx->L[0];
-        for (size_t ix = 0; ix < Nx; ix++) {
+        for (uint64_t ix = 0; ix < Nx; ix++) {
             const f64 x = ((f64)ix - 0.5 * (f64)Nx) * Lx / (f64)Nx;
             const f64 V = V_trap(ctx->dim, &x, param);
             ltK[ix] += V;
@@ -39,16 +39,16 @@ void bdg_set_trap(bdg_t *bdg,
     }
 
     if (2 == ctx->dim) {
-        const size_t Nx = ctx->N[0];
-        const size_t Ny = ctx->N[1];
+        const uint64_t Nx = ctx->N[0];
+        const uint64_t Ny = ctx->N[1];
         const f64    Lx = ctx->L[0];
         const f64    Ly = ctx->L[1];
-        for (size_t iy = 0; iy < Ny; iy++) {
+        for (uint64_t iy = 0; iy < Ny; iy++) {
             const f64 y = ((f64)iy - 0.5 * (f64)Ny) * Ly / (f64)Ny;
-            for (size_t ix = 0; ix < Nx; ix++) {
+            for (uint64_t ix = 0; ix < Nx; ix++) {
                 const f64 x = ((f64)ix - 0.5 * (f64)Nx) * Lx / (f64)Nx;
                 const f64 r[2] = {x, y};
-                const size_t idx = iy * Nx + ix;
+                const uint64_t idx = iy * Nx + ix;
                 const f64 V = V_trap(ctx->dim, r, param);
                 ltK[idx] += V;
                 ltM[idx] += V;
@@ -57,20 +57,20 @@ void bdg_set_trap(bdg_t *bdg,
     }
 
     if (3 == ctx->dim) {
-        const size_t Nx = ctx->N[0];
-        const size_t Ny = ctx->N[1];
-        const size_t Nz = ctx->N[2];
+        const uint64_t Nx = ctx->N[0];
+        const uint64_t Ny = ctx->N[1];
+        const uint64_t Nz = ctx->N[2];
         const f64    Lx = ctx->L[0];
         const f64    Ly = ctx->L[1];
         const f64    Lz = ctx->L[2];
-        for (size_t iz = 0; iz < Nz; iz++) {
+        for (uint64_t iz = 0; iz < Nz; iz++) {
             const f64 z = ((f64)iz - 0.5 * (f64)Nz) * Lz / (f64)Nz;
-            for (size_t iy = 0; iy < Ny; iy++) {
+            for (uint64_t iy = 0; iy < Ny; iy++) {
                 const f64 y = ((f64)iy - 0.5 * (f64)Ny) * Ly / (f64)Ny;
-                for (size_t ix = 0; ix < Nx; ix++) {
+                for (uint64_t ix = 0; ix < Nx; ix++) {
                     const f64 x = ((f64)ix - 0.5 * (f64)Nx) * Lx / (f64)Nx;
                     const f64 r[3] = {x, y, z};
-                    const size_t idx = iz * Ny * Nx + iy * Nx + ix;
+                    const uint64_t idx = iz * Ny * Nx + iy * Nx + ix;
                     const f64 V = V_trap(ctx->dim, r, param);
                     ltK[idx] += V;
                     ltM[idx] += V;
@@ -85,7 +85,7 @@ void bdg_set_trap(bdg_t *bdg,
 /* ----------------------------------------------------------------
  * bdg_set_wavefunction — copy wf into ctx (in-memory)
  * ---------------------------------------------------------------- */
-void bdg_set_wavefunction(bdg_t *bdg, const void *wf, size_t wf_size) {
+void bdg_set_wavefunction(bdg_t *bdg, const void *wf, uint64_t wf_size) {
     BDG_REQUIRE(bdg, BDG_HAS_SYSTEM, "bdg_set_wavefunction");
 
     matmul_ctx_t *ctx = bdg->ctx;
@@ -118,14 +118,14 @@ void bdg_set_wavefunction(bdg_t *bdg, const void *wf, size_t wf_size) {
 void bdg_set_local_interactions(bdg_t *bdg,
                                 f64 (*U_intK)(void *param, f64 density),
                                 f64 (*U_intM)(void *param, f64 density),
-                                void *param) {
+                                const void *param) {
     BDG_REQUIRE(bdg, BDG_HAS_WF, "bdg_set_local_interactions");
     BDG_FORBID(bdg, BDG_HAS_INTERACTIONS, "bdg_set_local_interactions");
 
     matmul_ctx_t *ctx = bdg->ctx;
-    const size_t size = ctx->size;
+    const uint64_t size = ctx->size;
 
-    for (size_t i = 0; i < size; i++) {
+    for (uint64_t i = 0; i < size; i++) {
         f64 density;
         if (bdg->complex_psi0) {
             const c64 psi = ((const c64 *)ctx->wf)[i];
@@ -150,7 +150,7 @@ void bdg_set_mu(bdg_t *bdg, f64 mu) {
     BDG_REQUIRE(bdg, BDG_HAS_SYSTEM, "bdg_set_mu");
 
     matmul_ctx_t *ctx = bdg->ctx;
-    const size_t size = ctx->size;
+    const uint64_t size = ctx->size;
 
     /* Allocate preconditioner arrays */
     if (NULL == ctx->precond_sqrtK)
@@ -160,13 +160,13 @@ void bdg_set_mu(bdg_t *bdg, f64 mu) {
 
     /* Compute preconditioner BEFORE subtracting mu
      * (uses localTermK/M which still include mu contribution) */
-    for (size_t i = 0; i < size; i++) {
+    for (uint64_t i = 0; i < size; i++) {
         ctx->precond_sqrtK[i] = 1.0 / sqrt(fabs(safe_val(ctx->localTermK[i])));
         ctx->precond_sqrtM[i] = 1.0 / sqrt(fabs(safe_val(ctx->localTermM[i])));
     }
 
     /* Subtract mu */
-    for (size_t i = 0; i < size; i++) {
+    for (uint64_t i = 0; i < size; i++) {
         ctx->localTermK[i] -= mu;
         ctx->localTermM[i] -= mu;
     }

@@ -58,11 +58,11 @@ TEST(bdg_3d_harmonic_excitations) {
    *   - Goldstone-like mode at ~0 (from ground state)
    *   - First excited: omega = 1.0 (3-fold degenerate: nx=1, ny=1, nz=1)
    */
-  const size_t N[3] = {16, 16, 16};
+  const size_t N[3] = {64, 64, 64};
   const f64 L[3] = {10.0, 10.0, 10.0};
   const f64 mu = 1.5;
-  const size_t nev = 4;
-  const size_t sizeSub = 12;
+  const size_t nev = 10;
+  const size_t sizeSub = 20;
   const size_t maxIter = 500;
   const f64 tol = 1e-4;
 

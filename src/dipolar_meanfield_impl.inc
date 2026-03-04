@@ -18,8 +18,8 @@
 #endif
 
 void FN(dipolar_add_meanfield)(matmul_ctx_t *ctx) {
-    const size_t size   = ctx->size;
-    const size_t k_size = ctx->k_size;
+    const uint64_t size   = ctx->size;
+    const uint64_t k_size = ctx->k_size;
     const f64    norm   = 1.0 / (f64)size;
     const f64    g      = ctx->g_ddi;
     const CTYPE *wf     = (const CTYPE *)ctx->wf;
@@ -29,7 +29,7 @@ void FN(dipolar_add_meanfield)(matmul_ctx_t *ctx) {
 
     /* 1. density |wf|² → c_wrk1 */
 #pragma omp parallel for simd schedule(static)
-    for (size_t i = 0; i < size; i++) {
+    for (uint64_t i = 0; i < size; i++) {
         const RTYPE d = CABS(wf[i]);
         buf[i] = (CTYPE)(d * d);
     }
@@ -39,7 +39,7 @@ void FN(dipolar_add_meanfield)(matmul_ctx_t *ctx) {
 
     /* 3. multiply by kernel / size */
 #pragma omp parallel for simd schedule(static)
-    for (size_t i = 0; i < k_size; i++)
+    for (uint64_t i = 0; i < k_size; i++)
         fk[i] *= kernel[i] * norm;
 
     /* 4. IFFT → c_wrk1 */
@@ -47,7 +47,7 @@ void FN(dipolar_add_meanfield)(matmul_ctx_t *ctx) {
 
     /* 5. accumulate g_ddi * Φ_dd into local terms */
 #pragma omp parallel for simd schedule(static)
-    for (size_t i = 0; i < size; i++) {
+    for (uint64_t i = 0; i < size; i++) {
         const f64 phi = g * CREAL(buf[i]);
         ctx->localTermK[i] += phi;
         ctx->localTermM[i] += phi;

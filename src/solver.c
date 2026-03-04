@@ -216,7 +216,7 @@ int bdg_solve_z(bdg_t *bdg) {
   LinearOperator_z_t *A = linop_create_z(n, n, matvec_lrep_z, NULL, &linop_ctx);
   LinearOperator_z_t *B = linop_create_z(n, n, matvec_swap_z, NULL, &linop_ctx);
   LinearOperator_z_t *T = linop_create_z(n, n, matvec_precond_z, NULL, &linop_ctx);
-
+  printf("am in complex path\n");
   /* 4. Set solver parameters */
   alg->A = A;
   alg->B = B;

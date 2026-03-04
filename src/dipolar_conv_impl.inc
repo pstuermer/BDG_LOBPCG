@@ -20,8 +20,8 @@
 #endif
 
 void FN(dipolar_conv)(matmul_ctx_t *ctx, const CTYPE *v, CTYPE *out) {
-    const size_t size   = ctx->size;
-    const size_t k_size = ctx->k_size;
+    const uint64_t size   = ctx->size;
+    const uint64_t k_size = ctx->k_size;
     const f64    norm   = 1.0 / (f64)size;
     const f64    g      = ctx->g_ddi;
     const CTYPE *wf     = (const CTYPE *)ctx->wf;
@@ -31,7 +31,7 @@ void FN(dipolar_conv)(matmul_ctx_t *ctx, const CTYPE *v, CTYPE *out) {
 
     /* 1. c_wrk1 = conj(wf) * v */
 #pragma omp parallel for simd schedule(static)
-    for (size_t i = 0; i < size; i++)
+    for (uint64_t i = 0; i < size; i++)
         buf[i] = CONJ(wf[i]) * v[i];
 
     /* 2. FFT → f_wrk */
@@ -39,7 +39,7 @@ void FN(dipolar_conv)(matmul_ctx_t *ctx, const CTYPE *v, CTYPE *out) {
 
     /* 3. scale by kernel / size */
 #pragma omp parallel for simd schedule(static)
-    for (size_t i = 0; i < k_size; i++)
+    for (uint64_t i = 0; i < k_size; i++)
         fk[i] *= kernel[i] * norm;
 
     /* 4. IFFT → c_wrk1 */
@@ -47,7 +47,7 @@ void FN(dipolar_conv)(matmul_ctx_t *ctx, const CTYPE *v, CTYPE *out) {
 
     /* 5. out = g_ddi * wf * c_wrk1 */
 #pragma omp parallel for simd schedule(static)
-    for (size_t i = 0; i < size; i++)
+    for (uint64_t i = 0; i < size; i++)
         out[i] = g * wf[i] * buf[i];
 }
 
