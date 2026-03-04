@@ -1,0 +1,8 @@
+#ifndef BDG_CONSTANTS_H
+#define BDG_CONSTANTS_H
+
+#define HBAR        1.054571817e-34
+#define BOHR_RADIUS 5.29177210903e-11
+#define MASS_UNIT   1.6605390666e-27
+
+#endif /* BDG_CONSTANTS_H */
