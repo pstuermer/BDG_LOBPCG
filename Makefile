@@ -40,7 +40,7 @@ TESTS = $(patsubst tests/%.c,build/%.ex,$(TEST_SRC))
 
 # Examples
 EXAMPLE_SRC = $(wildcard examples/*.c)
-EXAMPLES = $(patsubst examples/%.c,build/%.ex,$(EXAMPLE_SRC))
+EXAMPLES = $(patsubst examples/%.c,build/ex_%.ex,$(EXAMPLE_SRC))
 
 .PHONY: all lib tests run-tests examples clean
 
