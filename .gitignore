@@ -4,6 +4,7 @@ CLAUDE.md
 PLAN.md
 TODO.md
 REVIEW.md
+GOLDSTONE_DEFLATION.md
 
 # Claude Code
 .claude/
@@ -75,3 +76,6 @@ dkms.conf
 
 # build files
 build/
+
+# Large wavefunction data files
+examples/*_wf.dat
