@@ -7,6 +7,7 @@
  *
  * Functions provided:
  *   FN(fft_forward)          — copy x → c_wrk1, forward FFT → f_wrk
+ *   FN(fft_forward_noalloc)  — forward FFT directly from x → f_wrk (no copy)
  *   FN(fft_forward_inplace)  — forward FFT c_wrk1 → f_wrk (no copy)
  *   FN(fft_backward)         — backward FFT f_wrk → y directly
  *   FN(fft_backward_inplace) — backward FFT f_wrk → c_wrk1
@@ -27,6 +28,22 @@ static inline void FN(fft_forward_inplace)(matmul_ctx_t *ctx) {
 #else
     fftw_execute_dft(ctx->fwd_plan,
                      (fftw_complex *)ctx->c_wrk1, (fftw_complex *)ctx->f_wrk);
+#endif
+}
+
+/* ----------------------------------------------------------------
+ * Forward FFT: x → f_wrk directly (no copy, no scratch buffer)
+ *
+ * Safe because out-of-place r2c/c2c does not modify input.
+ * Requires x to have same alignment as c_wrk1 (both 64-byte via xcalloc).
+ * ---------------------------------------------------------------- */
+static inline void FN(fft_forward_noalloc)(matmul_ctx_t *ctx, const CTYPE *x) {
+#ifdef CTYPE_IS_REAL
+    fftw_execute_dft_r2c(ctx->fwd_plan,
+                         (f64 *)x, (fftw_complex *)ctx->f_wrk);
+#else
+    fftw_execute_dft(ctx->fwd_plan,
+                     (fftw_complex *)x, (fftw_complex *)ctx->f_wrk);
 #endif
 }
 

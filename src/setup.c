@@ -162,8 +162,8 @@ void bdg_set_mu(bdg_t *bdg, f64 mu) {
     /* Compute preconditioner BEFORE subtracting mu
      * (uses localTermK/M which still include mu contribution) */
     for (uint64_t i = 0; i < size; i++) {
-        ctx->precond_sqrtK[i] = 1.0 / sqrt(fabs(safe_val(ctx->localTermK[i])));
-        ctx->precond_sqrtM[i] = 1.0 / sqrt(fabs(safe_val(ctx->localTermM[i])));
+        ctx->precond_sqrtK[i] = 1.0 / sqrt(fmax(1e-8, ctx->localTermK[i]));
+        ctx->precond_sqrtM[i] = 1.0 / sqrt(fmax(1e-8, ctx->localTermM[i]));
     }
 
     /* Subtract mu */
