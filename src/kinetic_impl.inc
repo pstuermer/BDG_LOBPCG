@@ -20,7 +20,7 @@ void FN(kinetic)(matmul_ctx_t *ctx, const CTYPE *x, CTYPE *y) {
     const f64 *k2 = ctx->k2;
     c64 *fk = ctx->f_wrk;
 
-    FN(fft_forward)(ctx, x);
+    FN(fft_forward_noalloc)(ctx, x);
 
 #pragma omp parallel for simd schedule(static)
     for (uint64_t i = 0; i < k_size; i++)
