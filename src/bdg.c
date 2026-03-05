@@ -1,4 +1,5 @@
 #include "bdg_internal.h"
+#include "profile.h"
 #include <string.h>
 
 #ifndef M_PI
@@ -33,6 +34,7 @@ bdg_t *bdg_alloc(uint64_t dim, const uint64_t *N, const f64 *L, int complex_psi0
  * ---------------------------------------------------------------- */
 void bdg_free(bdg_t **bdg) {
     if (!bdg || !*bdg) return;
+    bdg_profile_print();
     bdg_t *b = *bdg;
 
     /* Results */

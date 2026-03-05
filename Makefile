@@ -2,6 +2,11 @@
 CC = gcc
 CFLAGS = -std=c11 -O3 -march=native -fopenmp -fPIC -Wall -Wextra
 
+# Profiling: make PROFILE=1
+ifeq ($(PROFILE),1)
+  CFLAGS += -DBDG_PROFILE
+endif
+
 # BLAS backend: MKL (default) or OPENBLAS
 BLAS_BACKEND ?= MKL
 
