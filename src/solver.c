@@ -125,7 +125,7 @@ int bdg_solve_d(bdg_t *bdg) {
     if (NULL != bdg->custom_init_fn)
       bdg->custom_init_fn(bdg, alg->S, n, sizeSub, bdg->custom_init_param);
     break;
-  case BDG_INIT_DEFAULT:
+  case BDG_INIT_PLANEWAVE:
   default: {
     /* Planewave-seeded, B-positive init.
      *
@@ -255,7 +255,7 @@ int bdg_solve_z(bdg_t *bdg) {
     if (NULL != bdg->custom_init_fn)
       bdg->custom_init_fn(bdg, alg->S, n, sizeSub, bdg->custom_init_param);
     break;
-  case BDG_INIT_DEFAULT:
+  case BDG_INIT_PLANEWAVE:
   default: {
     /* Planewave-seeded, B-positive init.
      * (See bdg_solve_d DEFAULT case for rationale.) */

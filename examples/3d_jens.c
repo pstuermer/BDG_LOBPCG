@@ -64,7 +64,7 @@ int main(void) {
   const uint64_t maxIter = 300;
   const f64 tol = 1.0e-4;
   bdg_set_solver_params(bdg, nev, sizeSub, maxIter, tol);
-  bdg_set_init_mode(bdg, BDG_INIT_DEFAULT, NULL, NULL);
+  bdg_set_init_mode(bdg, BDG_INIT_PLANEWAVE, NULL, (void *)(intptr_t)BDG_GEOM_ELONGATED);
 
   const f64 start = omp_get_wtime();
   const int ret = bdg_solve(bdg);

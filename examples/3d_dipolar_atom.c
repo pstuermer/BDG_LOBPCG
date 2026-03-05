@@ -57,7 +57,7 @@ int main(void) {
   bdg_set_dipolar(bdg, g_ddi, dir_ddi, cutoff_R);
   bdg_set_mu(bdg, 110.14092367);
   bdg_set_solver_params(bdg, 20, 30, 1000, 1.0e-5);
-  bdg_set_init_mode(bdg, BDG_INIT_DEFAULT, NULL, NULL);
+  bdg_set_init_mode(bdg, BDG_INIT_PLANEWAVE, NULL, (void *)(intptr_t)BDG_GEOM_RING);
 
   const f64 start = omp_get_wtime();
   const int ret = bdg_solve(bdg);
