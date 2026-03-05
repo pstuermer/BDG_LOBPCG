@@ -1,5 +1,6 @@
 #include "bdg_internal.h"
 #include "lobpcg.h"
+#include <stdlib.h>
 #include <time.h>
 
 #ifndef M_PI
@@ -58,6 +59,73 @@ static void matvec_precond_z(const LinearOperator_z_t *op,
                               c64 *restrict x, c64 *restrict y) {
     matmul_ctx_t *ctx = (matmul_ctx_t *)op->ctx->data;
     precondLrep_z(ctx, x, y);
+}
+
+/* ================================================================
+ * K-vector sorting for planewave init
+ * ================================================================ */
+
+typedef struct {
+  f64 k2;           /* |k|^2 */
+  uint64_t idx[3];  /* FFTW indices per dimension */
+} kvec_entry_t;
+
+static int kvec_cmp(const void *a, const void *b) {
+  const f64 ka = ((const kvec_entry_t *)a)->k2;
+  const f64 kb = ((const kvec_entry_t *)b)->k2;
+  return (ka > kb) - (ka < kb);
+}
+
+static kvec_entry_t *enumerate_kvecs(const matmul_ctx_t *ctx,
+                                     bdg_geom_hint_t hint,
+                                     uint64_t n_needed,
+                                     uint64_t *n_out) {
+  const uint64_t dim = ctx->dim;
+
+  uint64_t range[3] = {1, 1, 1};
+  switch (hint) {
+  case BDG_GEOM_ELONGATED: {
+    uint64_t long_d = 0;
+    for (uint64_t d = 1; d < dim; d++)
+      if (ctx->L[d] > ctx->L[long_d]) long_d = d;
+    range[long_d] = (ctx->N[long_d] < 2 * n_needed)
+                  ? ctx->N[long_d] : 2 * n_needed;
+    break;
+  }
+  case BDG_GEOM_RING:
+    for (uint64_t d = 0; d < dim && d < 2; d++)
+      range[d] = (ctx->N[d] < 2 * n_needed)
+               ? ctx->N[d] : 2 * n_needed;
+    break;
+  case BDG_GEOM_AUTO:
+  default:
+    for (uint64_t d = 0; d < dim; d++)
+      range[d] = (ctx->N[d] < 2 * n_needed)
+               ? ctx->N[d] : 2 * n_needed;
+    break;
+  }
+
+  const uint64_t total = range[0] * range[1] * range[2];
+  kvec_entry_t *entries = xcalloc(total, sizeof(kvec_entry_t));
+  uint64_t count = 0;
+  for (uint64_t iz = 0; iz < range[2]; iz++) {
+    const f64 kz2 = (dim > 2) ? ctx->kx2[2][iz] : 0.0;
+    for (uint64_t iy = 0; iy < range[1]; iy++) {
+      const f64 ky2 = (dim > 1) ? ctx->kx2[1][iy] : 0.0;
+      for (uint64_t ix = 0; ix < range[0]; ix++) {
+        const f64 kx2 = ctx->kx2[0][ix];
+        entries[count].k2 = kx2 + ky2 + kz2;
+        entries[count].idx[0] = ix;
+        entries[count].idx[1] = iy;
+        entries[count].idx[2] = iz;
+        count++;
+      }
+    }
+  }
+
+  qsort(entries, count, sizeof(kvec_entry_t), kvec_cmp);
+  *n_out = (count < n_needed) ? count : n_needed;
+  return entries;
 }
 
 /* ================================================================
