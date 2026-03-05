@@ -360,33 +360,74 @@ int bdg_solve_z(bdg_t *bdg) {
     break;
   case BDG_INIT_PLANEWAVE:
   default: {
-    /* Planewave-seeded, B-positive init.
-     * (See bdg_solve_d DEFAULT case for rationale.) */
     const c64 *wf = (const c64 *)ctx->wf;
     uint32_t seed = 42;
 
+    const bdg_geom_hint_t hint = (NULL != bdg->custom_init_param)
+      ? (bdg_geom_hint_t)(intptr_t)bdg->custom_init_param
+      : BDG_GEOM_AUTO;
+
+    const uint64_t n_needed = (sizeSub + 1) / 2;
+    uint64_t n_kvecs = 0;
+    kvec_entry_t *kvecs = enumerate_kvecs(ctx, hint, n_needed, &n_kvecs);
+
     for (uint64_t j = 0; j < sizeSub; j++) {
-      const uint64_t k_idx = (j + 1) / 2;
+      const uint64_t kv_idx = (j + 1) / 2;
       const int use_sin = (j % 2 == 1);
 
+      if (use_sin && kv_idx < n_kvecs && kvecs[kv_idx].k2 < 1e-30) {
+        for (uint64_t i = 0; i < size; i++) {
+          const f64 wf_w = (NULL != wf) ? cabs(wf[i]) : 1.0;
+          const c64 val = 1e-3 * (xrand(&seed) - 0.5) * wf_w + 0.0 * I;
+          alg->S[i + j * n] = val;
+          alg->S[i + size + j * n] = val;
+        }
+        continue;
+      }
+
+      if (kv_idx >= n_kvecs) {
+        for (uint64_t i = 0; i < size; i++) {
+          const f64 wf_w = (NULL != wf) ? cabs(wf[i]) : 1.0;
+          const c64 val = (xrand(&seed) - 0.5) * wf_w + 0.0 * I;
+          alg->S[i + j * n] = val;
+          alg->S[i + size + j * n] = val;
+        }
+        continue;
+      }
+
+      const uint64_t *ki = kvecs[kv_idx].idx;
+
+      f64 freq[3] = {0.0, 0.0, 0.0};
+      for (uint64_t d = 0; d < ctx->dim; d++) {
+        const int64_t f = (ki[d] <= ctx->N[d] / 2)
+                        ? (int64_t)ki[d]
+                        : (int64_t)ki[d] - (int64_t)ctx->N[d];
+        freq[d] = 2.0 * M_PI * (f64)f / ctx->L[d];
+      }
+
+      uint64_t stride[3] = {1, 1, 1};
+      for (uint64_t d = 1; d < ctx->dim; d++)
+        stride[d] = stride[d - 1] * ctx->N[d - 1];
+
       for (uint64_t i = 0; i < size; i++) {
-        f64 pw;
-        if (0 == k_idx) {
-          pw = 1.0;
-        } else {
-          const f64 xpos = (f64)(i % ctx->N[0]) * ctx->L[0] / (f64)ctx->N[0];
-          const f64 kval = 2.0 * M_PI * (f64)k_idx / ctx->L[0];
-          pw = use_sin ? sin(kval * xpos) : cos(kval * xpos);
+        f64 kr = 0.0;
+        for (uint64_t d = 0; d < ctx->dim; d++) {
+          const uint64_t i_d = (i / stride[d]) % ctx->N[d];
+          const f64 r_d = (f64)i_d * ctx->L[d] / (f64)ctx->N[d];
+          kr += freq[d] * r_d;
         }
 
+        const f64 pw = use_sin ? sin(kr) : cos(kr);
         const f64 pert = 1e-4 * (xrand(&seed) - 0.5);
-        const f64 wf_weight = (NULL != wf) ? cabs(wf[i]) : 1.0;
-        const c64 val = ((pw + pert) * wf_weight) + 0.0 * I;
+        const f64 wf_w = (NULL != wf) ? cabs(wf[i]) : 1.0;
+        const c64 val = ((pw + pert) * wf_w) + 0.0 * I;
 
-        alg->S[i + j * n] = val;           /* u-part */
-        alg->S[i + size + j * n] = val;    /* v-part = u-part → B-positive */
+        alg->S[i + j * n] = val;
+        alg->S[i + size + j * n] = val;
       }
     }
+
+    safe_free((void **)&kvecs);
   }
   }
 
