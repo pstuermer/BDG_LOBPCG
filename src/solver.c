@@ -202,24 +202,15 @@ int bdg_solve_d(bdg_t *bdg) {
       ? (bdg_geom_hint_t)(intptr_t)bdg->custom_init_param
       : BDG_GEOM_AUTO;
 
+    /* Columns: cos/sin pairs for sorted k-vectors, weighted by |psi0|.
+     * j=0,1 → kvec 0 (cos,sin); j=2,3 → kvec 1; ... */
     const uint64_t n_needed = (sizeSub + 1) / 2;
     uint64_t n_kvecs = 0;
     kvec_entry_t *kvecs = enumerate_kvecs(ctx, hint, n_needed, &n_kvecs);
 
     for (uint64_t j = 0; j < sizeSub; j++) {
-      const uint64_t kv_idx = (j + 1) / 2;
-      const int use_sin = (j % 2 == 1);
-
-      /* sin(0) = 0, fill with noise instead */
-      if (use_sin && kv_idx < n_kvecs && kvecs[kv_idx].k2 < 1e-30) {
-        for (uint64_t i = 0; i < size; i++) {
-          const f64 wf_w = (NULL != wf) ? fabs(wf[i]) : 1.0;
-          const f64 val = 1e-3 * (xrand(&seed) - 0.5) * wf_w;
-          alg->S[i + j * n] = val;
-          alg->S[i + size + j * n] = val;
-        }
-        continue;
-      }
+      const uint64_t kv_idx = (j + 1) / 2;  /* 0,1,1,2,2,... */
+      const int use_sin = (j % 2 == 1);      /* j=0→cos, j=1→sin, j=2→cos, ... */
 
       if (kv_idx >= n_kvecs) {
         for (uint64_t i = 0; i < size; i++) {
@@ -367,6 +358,7 @@ int bdg_solve_z(bdg_t *bdg) {
       ? (bdg_geom_hint_t)(intptr_t)bdg->custom_init_param
       : BDG_GEOM_AUTO;
 
+    /* Columns: cos/sin pairs for sorted k-vectors, weighted by |psi0|. */
     const uint64_t n_needed = (sizeSub + 1) / 2;
     uint64_t n_kvecs = 0;
     kvec_entry_t *kvecs = enumerate_kvecs(ctx, hint, n_needed, &n_kvecs);
@@ -374,16 +366,6 @@ int bdg_solve_z(bdg_t *bdg) {
     for (uint64_t j = 0; j < sizeSub; j++) {
       const uint64_t kv_idx = (j + 1) / 2;
       const int use_sin = (j % 2 == 1);
-
-      if (use_sin && kv_idx < n_kvecs && kvecs[kv_idx].k2 < 1e-30) {
-        for (uint64_t i = 0; i < size; i++) {
-          const f64 wf_w = (NULL != wf) ? cabs(wf[i]) : 1.0;
-          const c64 val = 1e-3 * (xrand(&seed) - 0.5) * wf_w + 0.0 * I;
-          alg->S[i + j * n] = val;
-          alg->S[i + size + j * n] = val;
-        }
-        continue;
-      }
 
       if (kv_idx >= n_kvecs) {
         for (uint64_t i = 0; i < size; i++) {
