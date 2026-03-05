@@ -77,5 +77,8 @@ dkms.conf
 # build files
 build/
 
+# worktrees
+.worktrees/
+
 # Large wavefunction data files
 examples/*_wf.dat
