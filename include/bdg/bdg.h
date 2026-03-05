@@ -27,11 +27,17 @@ typedef struct bdg_t bdg_t;
  * ================================================================ */
 
 typedef enum {
-  BDG_INIT_DEFAULT,      /* Planewave-seeded, B-positive (current behavior) */
+  BDG_INIT_PLANEWAVE,    /* Geometry-aware planewave seeding (default, value 0) */
   BDG_INIT_WF_WEIGHTED,  /* |gauss| * |psi0| for both halves (B-positive) */
   BDG_INIT_REUSE,        /* Previous modes + noise; set by bdg_reuse_modes */
   BDG_INIT_CUSTOM        /* User callback; must ensure B-positivity */
 } bdg_init_mode_t;
+
+typedef enum {
+  BDG_GEOM_AUTO,         /* Lowest |k|^2 across all dimensions */
+  BDG_GEOM_ELONGATED,    /* k-vectors along longest L dimension only */
+  BDG_GEOM_RING          /* (kx,ky) pairs sorted by kx^2+ky^2, kz=0 */
+} bdg_geom_hint_t;
 
 /**
  * Custom init callback type.
@@ -156,7 +162,9 @@ void bdg_set_solver_params(bdg_t *bdg, uint64_t nev, uint64_t sizeSub,
 
 /**
  * Select eigenvector initialization strategy.
- * For BDG_INIT_CUSTOM, fn and param are required; ignored otherwise.
+ * For BDG_INIT_CUSTOM, fn and param are required.
+ * For BDG_INIT_PLANEWAVE, pass fn=NULL, param=(void*)(intptr_t)hint
+ *   where hint is a bdg_geom_hint_t. param=NULL defaults to BDG_GEOM_AUTO.
  * Survives bdg_reset — set once, reused across sweeps.
  */
 void bdg_set_init_mode(bdg_t *bdg, bdg_init_mode_t mode,

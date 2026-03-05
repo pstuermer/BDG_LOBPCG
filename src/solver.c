@@ -1,5 +1,6 @@
 #include "bdg_internal.h"
 #include "lobpcg.h"
+#include <stdlib.h>
 #include <time.h>
 
 #ifndef M_PI
@@ -58,6 +59,73 @@ static void matvec_precond_z(const LinearOperator_z_t *op,
                               c64 *restrict x, c64 *restrict y) {
     matmul_ctx_t *ctx = (matmul_ctx_t *)op->ctx->data;
     precondLrep_z(ctx, x, y);
+}
+
+/* ================================================================
+ * K-vector sorting for planewave init
+ * ================================================================ */
+
+typedef struct {
+  f64 k2;           /* |k|^2 */
+  uint64_t idx[3];  /* FFTW indices per dimension */
+} kvec_entry_t;
+
+static int kvec_cmp(const void *a, const void *b) {
+  const f64 ka = ((const kvec_entry_t *)a)->k2;
+  const f64 kb = ((const kvec_entry_t *)b)->k2;
+  return (ka > kb) - (ka < kb);
+}
+
+static kvec_entry_t *enumerate_kvecs(const matmul_ctx_t *ctx,
+                                     bdg_geom_hint_t hint,
+                                     uint64_t n_needed,
+                                     uint64_t *n_out) {
+  const uint64_t dim = ctx->dim;
+
+  uint64_t range[3] = {1, 1, 1};
+  switch (hint) {
+  case BDG_GEOM_ELONGATED: {
+    uint64_t long_d = 0;
+    for (uint64_t d = 1; d < dim; d++)
+      if (ctx->L[d] > ctx->L[long_d]) long_d = d;
+    range[long_d] = (ctx->N[long_d] < 2 * n_needed)
+                  ? ctx->N[long_d] : 2 * n_needed;
+    break;
+  }
+  case BDG_GEOM_RING:
+    for (uint64_t d = 0; d < dim && d < 2; d++)
+      range[d] = (ctx->N[d] < 2 * n_needed)
+               ? ctx->N[d] : 2 * n_needed;
+    break;
+  case BDG_GEOM_AUTO:
+  default:
+    for (uint64_t d = 0; d < dim; d++)
+      range[d] = (ctx->N[d] < 2 * n_needed)
+               ? ctx->N[d] : 2 * n_needed;
+    break;
+  }
+
+  const uint64_t total = range[0] * range[1] * range[2];
+  kvec_entry_t *entries = xcalloc(total, sizeof(kvec_entry_t));
+  uint64_t count = 0;
+  for (uint64_t iz = 0; iz < range[2]; iz++) {
+    const f64 kz2 = (dim > 2) ? ctx->kx2[2][iz] : 0.0;
+    for (uint64_t iy = 0; iy < range[1]; iy++) {
+      const f64 ky2 = (dim > 1) ? ctx->kx2[1][iy] : 0.0;
+      for (uint64_t ix = 0; ix < range[0]; ix++) {
+        const f64 kx2 = ctx->kx2[0][ix];
+        entries[count].k2 = kx2 + ky2 + kz2;
+        entries[count].idx[0] = ix;
+        entries[count].idx[1] = iy;
+        entries[count].idx[2] = iz;
+        count++;
+      }
+    }
+  }
+
+  qsort(entries, count, sizeof(kvec_entry_t), kvec_cmp);
+  *n_out = (count < n_needed) ? count : n_needed;
+  return entries;
 }
 
 /* ================================================================
@@ -125,42 +193,68 @@ int bdg_solve_d(bdg_t *bdg) {
     if (NULL != bdg->custom_init_fn)
       bdg->custom_init_fn(bdg, alg->S, n, sizeSub, bdg->custom_init_param);
     break;
-  case BDG_INIT_DEFAULT:
+  case BDG_INIT_PLANEWAVE:
   default: {
-    /* Planewave-seeded, B-positive init.
-     *
-     * For periodic BdG problems the natural eigenmodes are planewaves.
-     * Seed column j with cos(k*r)/sin(k*r) for k = 0, 1, 1, 2, 2, ...
-     * weighted by |wf| and with small random perturbation.
-     * Setting u-part = v-part guarantees x^T*B*x = 2*u^T*u > 0.
-     */
     const f64 *wf = (const f64 *)ctx->wf;
     uint32_t seed = 42;
 
+    const bdg_geom_hint_t hint = (NULL != bdg->custom_init_param)
+      ? (bdg_geom_hint_t)(intptr_t)bdg->custom_init_param
+      : BDG_GEOM_AUTO;
+
+    /* Columns: cos/sin pairs for sorted k-vectors, weighted by |psi0|.
+     * j=0,1 → kvec 0 (cos,sin); j=2,3 → kvec 1; ... */
+    const uint64_t n_needed = (sizeSub + 1) / 2;
+    uint64_t n_kvecs = 0;
+    kvec_entry_t *kvecs = enumerate_kvecs(ctx, hint, n_needed, &n_kvecs);
+
     for (uint64_t j = 0; j < sizeSub; j++) {
-      const uint64_t k_idx = (j + 1) / 2;  /* 0, 1, 1, 2, 2, 3, ... */
-      const int use_sin = (j % 2 == 1);
+      const uint64_t kv_idx = (j + 1) / 2;  /* 0,1,1,2,2,... */
+      const int use_sin = (j % 2 == 1);      /* j=0→cos, j=1→sin, j=2→cos, ... */
+
+      if (kv_idx >= n_kvecs) {
+        for (uint64_t i = 0; i < size; i++) {
+          const f64 wf_w = (NULL != wf) ? fabs(wf[i]) : 1.0;
+          const f64 val = (xrand(&seed) - 0.5) * wf_w;
+          alg->S[i + j * n] = val;
+          alg->S[i + size + j * n] = val;
+        }
+        continue;
+      }
+
+      const uint64_t *ki = kvecs[kv_idx].idx;
+
+      f64 freq[3] = {0.0, 0.0, 0.0};
+      for (uint64_t d = 0; d < ctx->dim; d++) {
+        const int64_t f = (ki[d] <= ctx->N[d] / 2)
+                        ? (int64_t)ki[d]
+                        : (int64_t)ki[d] - (int64_t)ctx->N[d];
+        freq[d] = 2.0 * M_PI * (f64)f / ctx->L[d];
+      }
+
+      uint64_t stride[3] = {1, 1, 1};
+      for (uint64_t d = 1; d < ctx->dim; d++)
+        stride[d] = stride[d - 1] * ctx->N[d - 1];
 
       for (uint64_t i = 0; i < size; i++) {
-        /* Compute planewave value along first dimension */
-        f64 pw;
-        if (0 == k_idx) {
-          pw = 1.0;
-        } else {
-          const f64 xpos = (f64)(i % ctx->N[0]) * ctx->L[0] / (f64)ctx->N[0];
-          const f64 kval = 2.0 * M_PI * (f64)k_idx / ctx->L[0];
-          pw = use_sin ? sin(kval * xpos) : cos(kval * xpos);
+        f64 kr = 0.0;
+        for (uint64_t d = 0; d < ctx->dim; d++) {
+          const uint64_t i_d = (i / stride[d]) % ctx->N[d];
+          const f64 r_d = (f64)i_d * ctx->L[d] / (f64)ctx->N[d];
+          kr += freq[d] * r_d;
         }
 
-        /* Weight by |wf| and add small perturbation */
+        const f64 pw = use_sin ? sin(kr) : cos(kr);
         const f64 pert = 1e-4 * (xrand(&seed) - 0.5);
-        const f64 wf_weight = (NULL != wf) ? fabs(wf[i]) : 1.0;
-        const f64 val = (pw + pert) * wf_weight;
+        const f64 wf_w = (NULL != wf) ? fabs(wf[i]) : 1.0;
+        const f64 val = (pw + pert) * wf_w;
 
-        alg->S[i + j * n] = val;           /* u-part */
-        alg->S[i + size + j * n] = val;    /* v-part = u-part → B-positive */
+        alg->S[i + j * n] = val;
+        alg->S[i + size + j * n] = val;
       }
     }
+
+    safe_free((void **)&kvecs);
   }
   }
 
@@ -255,35 +349,67 @@ int bdg_solve_z(bdg_t *bdg) {
     if (NULL != bdg->custom_init_fn)
       bdg->custom_init_fn(bdg, alg->S, n, sizeSub, bdg->custom_init_param);
     break;
-  case BDG_INIT_DEFAULT:
+  case BDG_INIT_PLANEWAVE:
   default: {
-    /* Planewave-seeded, B-positive init.
-     * (See bdg_solve_d DEFAULT case for rationale.) */
     const c64 *wf = (const c64 *)ctx->wf;
     uint32_t seed = 42;
 
+    const bdg_geom_hint_t hint = (NULL != bdg->custom_init_param)
+      ? (bdg_geom_hint_t)(intptr_t)bdg->custom_init_param
+      : BDG_GEOM_AUTO;
+
+    /* Columns: cos/sin pairs for sorted k-vectors, weighted by |psi0|. */
+    const uint64_t n_needed = (sizeSub + 1) / 2;
+    uint64_t n_kvecs = 0;
+    kvec_entry_t *kvecs = enumerate_kvecs(ctx, hint, n_needed, &n_kvecs);
+
     for (uint64_t j = 0; j < sizeSub; j++) {
-      const uint64_t k_idx = (j + 1) / 2;
+      const uint64_t kv_idx = (j + 1) / 2;
       const int use_sin = (j % 2 == 1);
 
+      if (kv_idx >= n_kvecs) {
+        for (uint64_t i = 0; i < size; i++) {
+          const f64 wf_w = (NULL != wf) ? cabs(wf[i]) : 1.0;
+          const c64 val = (xrand(&seed) - 0.5) * wf_w + 0.0 * I;
+          alg->S[i + j * n] = val;
+          alg->S[i + size + j * n] = val;
+        }
+        continue;
+      }
+
+      const uint64_t *ki = kvecs[kv_idx].idx;
+
+      f64 freq[3] = {0.0, 0.0, 0.0};
+      for (uint64_t d = 0; d < ctx->dim; d++) {
+        const int64_t f = (ki[d] <= ctx->N[d] / 2)
+                        ? (int64_t)ki[d]
+                        : (int64_t)ki[d] - (int64_t)ctx->N[d];
+        freq[d] = 2.0 * M_PI * (f64)f / ctx->L[d];
+      }
+
+      uint64_t stride[3] = {1, 1, 1};
+      for (uint64_t d = 1; d < ctx->dim; d++)
+        stride[d] = stride[d - 1] * ctx->N[d - 1];
+
       for (uint64_t i = 0; i < size; i++) {
-        f64 pw;
-        if (0 == k_idx) {
-          pw = 1.0;
-        } else {
-          const f64 xpos = (f64)(i % ctx->N[0]) * ctx->L[0] / (f64)ctx->N[0];
-          const f64 kval = 2.0 * M_PI * (f64)k_idx / ctx->L[0];
-          pw = use_sin ? sin(kval * xpos) : cos(kval * xpos);
+        f64 kr = 0.0;
+        for (uint64_t d = 0; d < ctx->dim; d++) {
+          const uint64_t i_d = (i / stride[d]) % ctx->N[d];
+          const f64 r_d = (f64)i_d * ctx->L[d] / (f64)ctx->N[d];
+          kr += freq[d] * r_d;
         }
 
+        const f64 pw = use_sin ? sin(kr) : cos(kr);
         const f64 pert = 1e-4 * (xrand(&seed) - 0.5);
-        const f64 wf_weight = (NULL != wf) ? cabs(wf[i]) : 1.0;
-        const c64 val = ((pw + pert) * wf_weight) + 0.0 * I;
+        const f64 wf_w = (NULL != wf) ? cabs(wf[i]) : 1.0;
+        const c64 val = ((pw + pert) * wf_w) + 0.0 * I;
 
-        alg->S[i + j * n] = val;           /* u-part */
-        alg->S[i + size + j * n] = val;    /* v-part = u-part → B-positive */
+        alg->S[i + j * n] = val;
+        alg->S[i + size + j * n] = val;
       }
     }
+
+    safe_free((void **)&kvecs);
   }
   }
 

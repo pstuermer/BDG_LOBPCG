@@ -312,8 +312,8 @@ TEST(set_init_mode) {
   bdg_set_init_mode(bdg, BDG_INIT_WF_WEIGHTED, NULL, NULL);
   ASSERT(BDG_INIT_WF_WEIGHTED == bdg->init_mode);
 
-  bdg_set_init_mode(bdg, BDG_INIT_DEFAULT, NULL, NULL);
-  ASSERT(BDG_INIT_DEFAULT == bdg->init_mode);
+  bdg_set_init_mode(bdg, BDG_INIT_PLANEWAVE, NULL, NULL);
+  ASSERT(BDG_INIT_PLANEWAVE == bdg->init_mode);
 
   bdg_free(&bdg);
 }
