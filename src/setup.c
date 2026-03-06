@@ -1,4 +1,5 @@
 #include "bdg_internal.h"
+#include "lobpcg/blas_wrapper.h"
 #include <inttypes.h>
 #include <math.h>
 #include <string.h>
@@ -103,10 +104,10 @@ void bdg_set_wavefunction(bdg_t *bdg, const void *wf, uint64_t wf_size) {
 
     if (bdg->complex_psi0) {
         ctx->wf = xcalloc(ctx->size, sizeof(c64));
-        memcpy(ctx->wf, wf, ctx->size * sizeof(c64));
+        z_copy(ctx->size, wf, ctx->wf);
     } else {
         ctx->wf = xcalloc(ctx->size, sizeof(f64));
-        memcpy(ctx->wf, wf, ctx->size * sizeof(f64));
+        d_copy(ctx->size, wf, ctx->wf);
     }
     ctx->wf_size = ctx->size;
 

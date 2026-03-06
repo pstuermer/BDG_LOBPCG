@@ -82,7 +82,7 @@ TEST(precondK_d_planewave_1d) {
         x[i] = cos(xj);
     }
 
-    precondK_d(ctx, x, y);
+    d_precondK(ctx, x, y);
 
     /* expected: cos(kx) / (V0 * (mu + 0.5*k^2)) with k=1 */
     const f64 expected_scale = 1.0 / (V0 * (mu + 0.5));
@@ -111,7 +111,7 @@ TEST(precondK_z_planewave_1d) {
         x[i] = cos(xj) + 0.0 * I;
     }
 
-    precondK_z(ctx, x, y);
+    z_precondK(ctx, x, y);
 
     const f64 expected_scale = 1.0 / (V0 * (mu + 0.5));
     for (uint64_t i = 0; i < size; i++) {
@@ -144,8 +144,8 @@ TEST(precondK_dz_consistency) {
         xz[i] = xd[i] + 0.0 * I;
     }
 
-    precondK_d(ctx_d, xd, yd);
-    precondK_z(ctx_z, xz, yz);
+    d_precondK(ctx_d, xd, yd);
+    z_precondK(ctx_z, xz, yz);
 
     for (uint64_t i = 0; i < size; i++) {
         ASSERT_CLOSE(creal(yz[i]), yd[i], TOL);
@@ -193,7 +193,7 @@ TEST(precondM_d_planewave_1d) {
         x[i] = cos(xj);
     }
 
-    precondM_d(ctx, x, y);
+    d_precondM(ctx, x, y);
 
     const f64 expected_scale = 1.0 / (VM * (mu + 0.5));
     for (uint64_t i = 0; i < size; i++) {
@@ -244,11 +244,11 @@ TEST(precondLrep_d_block_structure) {
     }
 
     /* apply Lrep preconditioner */
-    precondLrep_d(ctx, x_stacked, y_stacked);
+    d_precondLrep(ctx, x_stacked, y_stacked);
 
     /* reference: apply K and M separately */
-    precondK_d(ctx, x_stacked, yK_ref);
-    precondM_d(ctx, &x_stacked[size], yM_ref);
+    d_precondK(ctx, x_stacked, yK_ref);
+    d_precondM(ctx, &x_stacked[size], yM_ref);
 
     for (uint64_t i = 0; i < size; i++) {
         ASSERT_CLOSE(y_stacked[i], yK_ref[i], TOL);
@@ -296,9 +296,9 @@ TEST(precondLrep_z_block_structure) {
         x_stacked[size + i] = sin(xj) + 0.0 * I;
     }
 
-    precondLrep_z(ctx, x_stacked, y_stacked);
-    precondK_z(ctx, x_stacked, yK_ref);
-    precondM_z(ctx, &x_stacked[size], yM_ref);
+    z_precondLrep(ctx, x_stacked, y_stacked);
+    z_precondK(ctx, x_stacked, yK_ref);
+    z_precondM(ctx, &x_stacked[size], yM_ref);
 
     for (uint64_t i = 0; i < size; i++) {
         ASSERT_CLOSE(creal(y_stacked[i]), creal(yK_ref[i]), TOL);
@@ -347,7 +347,7 @@ TEST(precondK_d_nonuniform_vs_manual) {
     /* input: [1, 0, 0, 0] — delta function */
     x[0] = 1.0;
 
-    precondK_d(ctx, x, y);
+    d_precondK(ctx, x, y);
 
     /* Just verify output is nonzero everywhere (delta spreads through FFT) */
     int any_nonzero = 0;
@@ -377,7 +377,7 @@ TEST(precondK_d_zero_mode) {
     for (uint64_t i = 0; i < size; i++)
         x[i] = 1.0;
 
-    precondK_d(ctx, x, y);
+    d_precondK(ctx, x, y);
 
     /* k=0: eigenvalue = 1 / (V0 * (mu + 0)) = 1 / (V0 * mu) */
     const f64 expected = 1.0 / (V0 * mu);

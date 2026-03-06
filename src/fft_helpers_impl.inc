@@ -16,6 +16,7 @@
  */
 
 #include "bdg_internal.h"
+#include "lobpcg/blas_wrapper.h"
 #include <string.h>
 
 /* ----------------------------------------------------------------
@@ -51,7 +52,7 @@ static inline void FN(fft_forward_noalloc)(matmul_ctx_t *ctx, const CTYPE *x) {
  * Forward FFT: copy x → c_wrk1, then FFT → f_wrk
  * ---------------------------------------------------------------- */
 static inline void FN(fft_forward)(matmul_ctx_t *ctx, const CTYPE *x) {
-    memcpy(ctx->c_wrk1, x, ctx->size * sizeof(CTYPE));
+    FN(copy)(ctx->size, x, ctx->c_wrk1);
     FN(fft_forward_inplace)(ctx);
 }
 

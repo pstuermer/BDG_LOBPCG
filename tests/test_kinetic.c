@@ -57,7 +57,7 @@ TEST(kinetic_d_planewave_1d) {
         x[i] = cos(xj);
     }
 
-    kinetic_d(ctx, x, y);
+    d_kinetic(ctx, x, y);
 
     for (uint64_t i = 0; i < size; i++) {
         const f64 xj = (f64)i * L[0] / (f64)size;
@@ -88,7 +88,7 @@ TEST(kinetic_d_superposition_1d) {
         x[i] = cos(xj) + 0.5 * cos(3.0 * xj);
     }
 
-    kinetic_d(ctx, x, y);
+    d_kinetic(ctx, x, y);
 
     for (uint64_t i = 0; i < size; i++) {
         const f64 xj = (f64)i * L[0] / (f64)size;
@@ -119,7 +119,7 @@ TEST(kinetic_z_planewave_1d) {
         const f64 xj = (f64)i * L[0] / (f64)size;
         xd[i] = cos(xj);
     }
-    kinetic_d(ctx_d, xd, yd);
+    d_kinetic(ctx_d, xd, yd);
 
     /* Complex path */
     matmul_ctx_t *ctx_z = matmul_ctx_alloc(1, N, L);
@@ -131,7 +131,7 @@ TEST(kinetic_z_planewave_1d) {
         const f64 xj = (f64)i * L[0] / (f64)size;
         xz[i] = cos(xj) + 0.0 * I;
     }
-    kinetic_z(ctx_z, xz, yz);
+    z_kinetic(ctx_z, xz, yz);
 
     /* Compare: real parts must match, imag parts ≈ 0 */
     for (uint64_t i = 0; i < size; i++) {
@@ -170,7 +170,7 @@ TEST(kinetic_d_planewave_3d) {
                 x[iz * Ny * Nx + iy * Nx + ix] = cos(xv + yv + zv);
             }
 
-    kinetic_d(ctx, x, y);
+    d_kinetic(ctx, x, y);
 
     for (uint64_t iz = 0; iz < Nz; iz++)
         for (uint64_t iy = 0; iy < Ny; iy++)
@@ -203,7 +203,7 @@ TEST(kinetic_d_zero_mode) {
     for (uint64_t i = 0; i < size; i++)
         x[i] = 1.0;
 
-    kinetic_d(ctx, x, y);
+    d_kinetic(ctx, x, y);
 
     for (uint64_t i = 0; i < size; i++)
         ASSERT_CLOSE(y[i], 0.0, TOL);
