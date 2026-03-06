@@ -1,6 +1,7 @@
 # BdG Dipolar Library Makefile
 CC = gcc
-CFLAGS = -std=c11 -O3 -march=native -fopenmp -fPIC -Wall -Wextra
+AR = gcc-ar
+CFLAGS = -std=c11 -O3 -march=native -fopenmp -Wall -Wextra
 
 # Profiling: make PROFILE=1
 ifeq ($(PROFILE),1)
@@ -11,7 +12,7 @@ endif
 BLAS_BACKEND ?= MKL
 
 # Path to LOBPCG library
-LOBPCG_DIR ?= $(HOME)/LOBPCG
+LOBPCG_DIR ?= $(HOME)/LOBPCG/.worktrees/profiling
 
 ifeq ($(BLAS_BACKEND),MKL)
   BLAS_INC = $(MKLROOT)/include
@@ -64,7 +65,7 @@ build/%.o: src/%.c
 	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
 
 build/libbdg.a: $(OBJ)
-	ar rcs $@ $(OBJ) 2>/dev/null || ar rcs $@
+	$(AR) rcs $@ $(OBJ) 2>/dev/null || $(AR) rcs $@
 
 # Tests link against both libbdg and liblobpcg
 build/%.ex: tests/%.c build/libbdg.a

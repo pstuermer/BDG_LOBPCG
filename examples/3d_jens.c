@@ -62,7 +62,7 @@ int main(void) {
   const uint64_t nev = 8;
   const uint64_t sizeSub = 12;
   const uint64_t maxIter = 300;
-  const f64 tol = 1.0e-4;
+  const f64 tol = 1.0e-5;
   bdg_set_solver_params(bdg, nev, sizeSub, maxIter, tol);
   bdg_set_init_mode(bdg, BDG_INIT_PLANEWAVE, NULL, (void *)(intptr_t)BDG_GEOM_ELONGATED);
 
