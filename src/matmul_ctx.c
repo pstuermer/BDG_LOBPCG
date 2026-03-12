@@ -75,6 +75,12 @@ void matmul_ctx_free(matmul_ctx_t **pctx) {
   safe_free((void **)&ctx->c_wrk1);
   safe_free((void **)&ctx->c_wrk2);
 
+  /* Goldstone deflation */
+  safe_free((void **)&ctx->gold_vecK);
+  safe_free((void **)&ctx->gold_vecM);
+  safe_free((void **)&ctx->gold_inv_normK);
+  safe_free((void **)&ctx->gold_inv_normM);
+
   /* Grid arrays */
   safe_free((void **)&ctx->N);
   safe_free((void **)&ctx->L);

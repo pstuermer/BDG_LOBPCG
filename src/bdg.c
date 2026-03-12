@@ -19,6 +19,7 @@ bdg_t *bdg_alloc(uint64_t dim, const uint64_t *N, const f64 *L, int complex_psi0
     bdg->complex_psi0 = complex_psi0;
     bdg->ctx = matmul_ctx_alloc(dim, N, L);
     bdg->ctx->complex_psi0 = complex_psi0;
+    bdg->ctx->gold_xi = 1000.0;
 
     /* Defaults */
     bdg->nev     = 3;
@@ -72,6 +73,15 @@ void bdg_reset(bdg_t *bdg) {
     ctx->g_ddi   = 0.0;
     ctx->dipolar = 0;
     ctx->wf_size = 0;
+
+    /* Goldstone deflation */
+    safe_free((void **)&ctx->gold_vecK);
+    safe_free((void **)&ctx->gold_vecM);
+    safe_free((void **)&ctx->gold_inv_normK);
+    safe_free((void **)&ctx->gold_inv_normM);
+    ctx->n_goldK = 0;
+    ctx->n_goldM = 0;
+    /* gold_xi survives reset (solver parameter) */
 
     /* Free results */
     safe_free((void **)&bdg->eigvals);

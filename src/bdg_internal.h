@@ -110,6 +110,15 @@ typedef struct {
     f64 *precond_sqrtK; /* 1/sqrt(localTermK + mu), length size (or NULL) */
     f64 *precond_sqrtM; /* 1/sqrt(localTermM + mu), length size (or NULL) */
 
+    /* Goldstone deflation */
+    uint64_t n_goldK;        /* number of K deflation vectors */
+    uint64_t n_goldM;        /* number of M deflation vectors */
+    void *gold_vecK;         /* CTYPE[n_goldK * size], column-major (or NULL) */
+    void *gold_vecM;         /* CTYPE[n_goldM * size], column-major (or NULL) */
+    f64 *gold_inv_normK;     /* 1/||V0_i||^2 [n_goldK] (or NULL) */
+    f64 *gold_inv_normM;     /* 1/||W_j||^2  [n_goldM] (or NULL) */
+    f64 gold_xi;             /* shift parameter (default 1000) */
+
     /* Flag: is wavefunction complex? (mirrors bdg_t.complex_psi0) */
     int complex_psi0;
 } matmul_ctx_t;
