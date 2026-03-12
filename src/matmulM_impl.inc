@@ -8,6 +8,7 @@
  */
 
 #include "bdg_internal.h"
+#include "lobpcg/blas_wrapper.h"
 #include "profile.h"
 #include <omp.h>
 
@@ -37,6 +38,13 @@ void FN(matmulM)(matmul_ctx_t *ctx, const CTYPE *x, CTYPE *y) {
     for (uint64_t i = 0; i < size; i++)
       y[i] += ltM[i] * x[i];
     BDG_TOC(t_elem, t_matmulM_elem);
+  }
+
+  /* Goldstone deflation: rank-1 shifts for null vectors of M */
+  for (uint64_t g = 0; g < ctx->n_goldM; g++) {
+    const CTYPE *w = (const CTYPE *)ctx->gold_vecM + g * size;
+    const CTYPE alpha = dot(size, w, x) * ctx->gold_inv_normM[g];
+    axpy(size, ctx->gold_xi * alpha, w, y);
   }
 
   BDG_TOC(t0, t_matmulM);
