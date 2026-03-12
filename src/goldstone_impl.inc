@@ -24,6 +24,38 @@
 #endif
 
 /* ----------------------------------------------------------------
+ * gold_store_vec: grow a deflation vector array by one entry.
+ * Reallocates *vecs (CTYPE[count * size] → CTYPE[(count+1) * size]),
+ * copies the new vector, computes 1/||vec||^2, bumps *count.
+ * Returns ||vec|| (caller may need it for logging).
+ * ---------------------------------------------------------------- */
+static f64 FN(gold_store_vec)(void **vecs, f64 **inv_norms, uint64_t *count,
+                               const CTYPE *vec, uint64_t size) {
+  const uint64_t old_n = *count;
+  const uint64_t new_n = old_n + 1;
+
+  CTYPE *new_vecs = xcalloc(new_n * size, sizeof(CTYPE));
+  f64 *new_norms = xcalloc(new_n, sizeof(f64));
+  if (NULL != *vecs) {
+    copy(old_n * size, (const CTYPE *)*vecs, new_vecs);
+    safe_free(vecs);
+  }
+  if (NULL != *inv_norms) {
+    d_copy(old_n, *inv_norms, new_norms);
+    safe_free((void **)inv_norms);
+  }
+
+  copy(size, vec, &new_vecs[old_n * size]);
+  const f64 v_norm = nrm2(size, vec);
+  new_norms[old_n] = 1.0 / (v_norm * v_norm);
+
+  *vecs = new_vecs;
+  *inv_norms = new_norms;
+  *count = new_n;
+  return v_norm;
+}
+
+/* ----------------------------------------------------------------
  * deflate_u1: detect K*psi0 = 0, compute V0 = M^{-1}*psi0 via CG
  * ---------------------------------------------------------------- */
 int FN(deflate_u1)(bdg_t *bdg, f64 tol) {
@@ -56,33 +88,11 @@ int FN(deflate_u1)(bdg_t *bdg, f64 tol) {
     printf("  bdg_deflate_u1: WARNING — CG did not converge\n");
 
   /* 3. Store deflation vector */
-  const uint64_t old_n = ctx->n_goldK;
-  const uint64_t new_n = old_n + 1;
-
-  /* Reallocate (expand) gold_vecK and gold_inv_normK */
-  CTYPE *new_vecs = xcalloc(new_n * size, sizeof(CTYPE));
-  f64 *new_norms = xcalloc(new_n, sizeof(f64));
-  if (NULL != ctx->gold_vecK) {
-    copy(old_n * size, (const CTYPE *)ctx->gold_vecK, new_vecs);
-    safe_free((void **)&ctx->gold_vecK);
-  }
-  if (NULL != ctx->gold_inv_normK) {
-    d_copy(old_n, ctx->gold_inv_normK, new_norms);
-    safe_free((void **)&ctx->gold_inv_normK);
-  }
-
-  /* Copy V0 into slot old_n */
-  copy(size, V0, &new_vecs[old_n * size]);
-  const f64 V0_norm2 = nrm2(size, V0);
-  new_norms[old_n] = 1.0 / (V0_norm2 * V0_norm2);
-
-  ctx->gold_vecK = new_vecs;
-  ctx->gold_inv_normK = new_norms;
-  ctx->n_goldK = new_n;
-
+  const f64 V0_norm = FN(gold_store_vec)(&ctx->gold_vecK, &ctx->gold_inv_normK,
+                                          &ctx->n_goldK, V0, size);
   safe_free((void **)&V0);
 
-  printf("  bdg_deflate_u1: U(1) mode deflated (V0 norm = %.6e)\n", V0_norm2);
+  printf("  bdg_deflate_u1: U(1) mode deflated (V0 norm = %.6e)\n", V0_norm);
   return 1;
 }
 
@@ -165,26 +175,8 @@ int FN(deflate_auto)(bdg_t *bdg, uint64_t n_check, f64 tol) {
         CTYPE *V0 = xcalloc(size, sizeof(CTYPE));
         FN(cg_solve)(ctx, FN(matmulM), FN(precondM), eigvec, V0, size, 1e-6, 500);
 
-        /* Store */
-        const uint64_t old_n = ctx->n_goldK;
-        const uint64_t new_n = old_n + 1;
-        CTYPE *new_vecs = xcalloc(new_n * size, sizeof(CTYPE));
-        f64 *new_norms = xcalloc(new_n, sizeof(f64));
-        if (NULL != ctx->gold_vecK) {
-          copy(old_n * size, (const CTYPE *)ctx->gold_vecK, new_vecs);
-          safe_free((void **)&ctx->gold_vecK);
-        }
-        if (NULL != ctx->gold_inv_normK) {
-          d_copy(old_n, ctx->gold_inv_normK, new_norms);
-          safe_free((void **)&ctx->gold_inv_normK);
-        }
-        copy(size, V0, &new_vecs[old_n * size]);
-        const f64 V0_n = nrm2(size, V0);
-        new_norms[old_n] = 1.0 / (V0_n * V0_n);
-        ctx->gold_vecK = new_vecs;
-        ctx->gold_inv_normK = new_norms;
-        ctx->n_goldK = new_n;
-
+        FN(gold_store_vec)(&ctx->gold_vecK, &ctx->gold_inv_normK,
+                           &ctx->n_goldK, V0, size);
         safe_free((void **)&V0);
         total++;
       }
@@ -227,26 +219,8 @@ int FN(deflate_auto)(bdg_t *bdg, uint64_t n_check, f64 tol) {
         CTYPE *W = xcalloc(size, sizeof(CTYPE));
         FN(cg_solve)(ctx, FN(matmulK), FN(precondK), eigvec, W, size, 1e-6, 500);
 
-        /* Store */
-        const uint64_t old_n = ctx->n_goldM;
-        const uint64_t new_n = old_n + 1;
-        CTYPE *new_vecs = xcalloc(new_n * size, sizeof(CTYPE));
-        f64 *new_norms = xcalloc(new_n, sizeof(f64));
-        if (NULL != ctx->gold_vecM) {
-          copy(old_n * size, (const CTYPE *)ctx->gold_vecM, new_vecs);
-          safe_free((void **)&ctx->gold_vecM);
-        }
-        if (NULL != ctx->gold_inv_normM) {
-          d_copy(old_n, ctx->gold_inv_normM, new_norms);
-          safe_free((void **)&ctx->gold_inv_normM);
-        }
-        copy(size, W, &new_vecs[old_n * size]);
-        const f64 W_n = nrm2(size, W);
-        new_norms[old_n] = 1.0 / (W_n * W_n);
-        ctx->gold_vecM = new_vecs;
-        ctx->gold_inv_normM = new_norms;
-        ctx->n_goldM = new_n;
-
+        FN(gold_store_vec)(&ctx->gold_vecM, &ctx->gold_inv_normM,
+                           &ctx->n_goldM, W, size);
         safe_free((void **)&W);
         total++;
       }
