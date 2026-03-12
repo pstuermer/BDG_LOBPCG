@@ -373,12 +373,11 @@ TEST(bdg_deflate_auto_no_null_vectors) {
   bdg_set_mu(bdg, mu);
   bdg_set_solver_params(bdg, 3, 6, 100, 1e-6);
 
-  /* First deflate U(1) so K_bar > 0 */
-  bdg_deflate_u1(bdg, 1e-6);
-
-  /* Auto-detect: M > 0 for standard BEC, so nothing to deflate */
+  /* deflate_auto handles U(1) internally + checks K and M */
   const int n_auto = bdg_deflate_auto(bdg, 2, 1e-6);
-  ASSERT(0 == n_auto);
+  /* 1 = U(1), 0 additional from K LOBPCG, 0 from M LOBPCG */
+  ASSERT(1 == n_auto);
+  ASSERT(1 == bdg->ctx->n_goldK);
   ASSERT(0 == bdg->ctx->n_goldM);
 
   bdg_free(&bdg);

@@ -14,27 +14,13 @@
 #include <stdio.h>
 
 /* ----------------------------------------------------------------
- * LOBPCG type aliases — explicit ifdefs since LOBPCG types
- * don't follow our CONCAT/FN() pattern
+ * LinearOperator typedef — middle-infix naming, can't use FN()
+ * All other LOBPCG calls use _Generic macros or FN(prefix_name).
  * ---------------------------------------------------------------- */
 #ifdef CTYPE_IS_REAL
-  typedef d_lobpcg_t FN_lobpcg_t;
   typedef LinearOperator_d_t FN_linop_t;
-  #define FN_lobpcg_alloc d_lobpcg_alloc
-  #define FN_lobpcg_run d_lobpcg
-  #define FN_lobpcg_free d_lobpcg_free
-  #define FN_linop_create linop_create_d
-  #define FN_linop_destroy linop_destroy_d
-  #define FN_fill_random d_fill_random
 #else
-  typedef z_lobpcg_t FN_lobpcg_t;
   typedef LinearOperator_z_t FN_linop_t;
-  #define FN_lobpcg_alloc z_lobpcg_alloc
-  #define FN_lobpcg_run z_lobpcg
-  #define FN_lobpcg_free z_lobpcg_free
-  #define FN_linop_create linop_create_z
-  #define FN_linop_destroy linop_destroy_z
-  #define FN_fill_random z_fill_random
 #endif
 
 /* ----------------------------------------------------------------
@@ -141,32 +127,33 @@ static void FN(gram_schmidt)(CTYPE *V, uint64_t n, uint64_t k, f64 *inv_norms) {
 }
 
 /* ----------------------------------------------------------------
- * deflate_auto: run definite LOBPCG on K_bar and M, deflate nulls
+ * deflate_auto: U(1) check + LOBPCG on K and M, deflate all nulls
  * ---------------------------------------------------------------- */
 int FN(deflate_auto)(bdg_t *bdg, uint64_t n_check, f64 tol) {
   matmul_ctx_t *ctx = bdg->ctx;
   const uint64_t size = ctx->size;
-  int total = 0;
+
+  /* ---- Phase 0: deflate U(1) analytically (always present) ---- */
+  int total = FN(deflate_u1)(bdg, tol);
 
   linop_ctx_t lctx = { .data = ctx, .data_size = sizeof(matmul_ctx_t) };
 
-  /* ---- Phase 1: check K (post-U1) for exotic null vectors ---- */
+  /* ---- Phase 1: check K for additional null vectors via LOBPCG ---- */
   {
     const uint64_t sizeSub = 2 * n_check;
-    FN_lobpcg_t *alg = FN_lobpcg_alloc(size, n_check, sizeSub);
+    FN(lobpcg_t) *alg = FN(lobpcg_alloc)(size, n_check, sizeSub);
 
-    FN_linop_t *A_K = FN_linop_create(size, size,
-                                        FN(matvec_K_linop), NULL, &lctx);
+    FN_linop_t *A_K = linop_create(size, size,
+                                   FN(matvec_K_linop), NULL, &lctx);
     alg->A = A_K;
     alg->B = NULL;
     alg->T = NULL;
     alg->maxIter = 50;
     alg->tol = tol * 0.1;
 
-    /* Random init */
-    FN_fill_random(size * sizeSub, alg->S);
+    fill_random(size * sizeSub, alg->S);
 
-    FN_lobpcg_run(alg);
+    lobpcg(alg);
 
     for (uint64_t j = 0; j < n_check && j < alg->converged; j++) {
       if (alg->eigVals[j] < tol) {
@@ -203,8 +190,8 @@ int FN(deflate_auto)(bdg_t *bdg, uint64_t n_check, f64 tol) {
       }
     }
 
-    FN_linop_destroy(&A_K);
-    FN_lobpcg_free(&alg);
+    linop_destroy(&A_K);
+    lobpcg_free(&alg);
   }
 
   /* Orthonormalize K-deflation vectors if multiple */
@@ -216,19 +203,19 @@ int FN(deflate_auto)(bdg_t *bdg, uint64_t n_check, f64 tol) {
   /* ---- Phase 2: check M for translational / exotic null vectors ---- */
   {
     const uint64_t sizeSub = 2 * n_check;
-    FN_lobpcg_t *alg = FN_lobpcg_alloc(size, n_check, sizeSub);
+    FN(lobpcg_t) *alg = FN(lobpcg_alloc)(size, n_check, sizeSub);
 
-    FN_linop_t *A_M = FN_linop_create(size, size,
-                                        FN(matvec_M_linop), NULL, &lctx);
+    FN_linop_t *A_M = linop_create(size, size,
+                                   FN(matvec_M_linop), NULL, &lctx);
     alg->A = A_M;
     alg->B = NULL;
     alg->T = NULL;
     alg->maxIter = 50;
     alg->tol = tol * 0.1;
 
-    FN_fill_random(size * sizeSub, alg->S);
+    fill_random(size * sizeSub, alg->S);
 
-    FN_lobpcg_run(alg);
+    lobpcg(alg);
 
     for (uint64_t j = 0; j < n_check && j < alg->converged; j++) {
       if (alg->eigVals[j] < tol) {
@@ -265,8 +252,8 @@ int FN(deflate_auto)(bdg_t *bdg, uint64_t n_check, f64 tol) {
       }
     }
 
-    FN_linop_destroy(&A_M);
-    FN_lobpcg_free(&alg);
+    linop_destroy(&A_M);
+    lobpcg_free(&alg);
   }
 
   /* Orthonormalize M-deflation vectors if multiple */
@@ -275,6 +262,6 @@ int FN(deflate_auto)(bdg_t *bdg, uint64_t n_check, f64 tol) {
                      ctx->n_goldM, ctx->gold_inv_normM);
   }
 
-  printf("  deflate_auto: %d additional mode(s) deflated\n", total);
+  printf("  deflate_auto: %d total mode(s) deflated\n", total);
   return total;
 }

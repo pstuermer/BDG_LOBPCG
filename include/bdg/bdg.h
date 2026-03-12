@@ -204,13 +204,13 @@ void bdg_set_goldstone_xi(bdg_t *bdg, f64 xi);
 int bdg_deflate_u1(bdg_t *bdg, f64 tol);
 
 /**
- * Auto-detect and deflate null vectors of K and M via definite LOBPCG.
- * Runs short LOBPCG on K (post-U1-deflation) and M to find near-zero
- * eigenvalues. For each, computes the correct deflation vector via CG.
- * Must be called after bdg_set_mu (and optionally after bdg_deflate_u1).
+ * Auto-detect and deflate all Goldstone modes.
+ * First deflates U(1) analytically, then runs definite LOBPCG on K
+ * and M to find any additional near-zero eigenvalues.
+ * Must be called after bdg_set_mu.
  * @param n_check  Number of smallest eigenvalues to check per operator
  * @param tol      Eigenvalue threshold for null-space membership
- * @return total number of modes deflated.
+ * @return total number of modes deflated (including U(1)).
  */
 int bdg_deflate_auto(bdg_t *bdg, uint64_t n_check, f64 tol);
 
