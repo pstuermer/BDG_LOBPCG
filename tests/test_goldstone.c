@@ -183,12 +183,83 @@ TEST(matmulM_deflation_shifts_null_vector) {
   matmul_ctx_free(&ctx);
 }
 
+/* ================================================================
+ * Test: CG solves a simple SPD system
+ *
+ * M = -0.5*nabla^2 + V where V=2.0 (constant). This is SPD.
+ * b = constant vector. Solution: x = b / V (since kinetic(const) = 0).
+ * ================================================================ */
+TEST(cg_solve_simple_spd) {
+  const uint64_t N = 32;
+  matmul_ctx_t *ctx = make_1d_ctx(N, 2.0 * M_PI, 2.0, 0.0);
+
+  /* b = 1.0 everywhere */
+  f64 *b = xcalloc(N, sizeof(f64));
+  f64 *x = xcalloc(N, sizeof(f64));
+  for (uint64_t i = 0; i < N; i++)
+    b[i] = 1.0;
+
+  /* Solve M*x = b where M = kinetic + 2.0*I */
+  const int ret = d_cg_solve(ctx, d_matmulM, NULL, b, x, N, 1e-10, 200);
+  ASSERT(0 == ret);
+
+  /* The constant vector is in null(kinetic), so M*const = 2.0*const
+   * => x = b/2.0 = 0.5 */
+  for (uint64_t i = 0; i < N; i++)
+    ASSERT_CLOSE(x[i], 0.5, 1e-6);
+
+  safe_free((void **)&b);
+  safe_free((void **)&x);
+  matmul_ctx_free(&ctx);
+}
+
+/* ================================================================
+ * Test: CG with preconditioner converges (correctness check)
+ * ================================================================ */
+TEST(cg_solve_with_precond) {
+  const uint64_t N = 32;
+  const f64 mu = 1.0;
+  const f64 V0 = 3.0;
+  matmul_ctx_t *ctx = make_1d_ctx(N, 2.0 * M_PI, V0, mu);
+
+  /* Build preconditioner arrays (normally done by bdg_set_mu) */
+  ctx->mu = mu;
+  ctx->precond_sqrtK = xcalloc(N, sizeof(f64));
+  ctx->precond_sqrtM = xcalloc(N, sizeof(f64));
+  for (uint64_t i = 0; i < N; i++) {
+    ctx->precond_sqrtK[i] = 1.0 / sqrt(fmax(1e-8, V0));
+    ctx->precond_sqrtM[i] = 1.0 / sqrt(fmax(1e-8, V0));
+  }
+
+  /* b = sin(2*pi*x/L) */
+  f64 *b = xcalloc(N, sizeof(f64));
+  f64 *x = xcalloc(N, sizeof(f64));
+  for (uint64_t i = 0; i < N; i++)
+    b[i] = sin(2.0 * M_PI * (f64)i / (f64)N);
+
+  const int ret = d_cg_solve(ctx, d_matmulM, d_precondM, b, x, N, 1e-10, 200);
+  ASSERT(0 == ret);
+
+  /* Verify: M*x should equal b */
+  f64 *Mx = xcalloc(N, sizeof(f64));
+  d_matmulM(ctx, x, Mx);
+  for (uint64_t i = 0; i < N; i++)
+    ASSERT_CLOSE(Mx[i], b[i], 1e-6);
+
+  safe_free((void **)&b);
+  safe_free((void **)&x);
+  safe_free((void **)&Mx);
+  matmul_ctx_free(&ctx);
+}
+
 int main(void) {
   printf("test_goldstone:\n");
   RUN(matmulK_no_deflation_unchanged);
   RUN(matmulK_deflation_shifts_null_vector);
   RUN(matmulK_deflation_preserves_orthogonal);
   RUN(matmulM_deflation_shifts_null_vector);
+  RUN(cg_solve_simple_spd);
+  RUN(cg_solve_with_precond);
   printf("\n  %d passed, %d failed\n", tests_passed, tests_failed);
   return tests_failed;
 }

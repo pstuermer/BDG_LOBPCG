@@ -224,6 +224,20 @@ void d_dipolar_conv(matmul_ctx_t *ctx, const f64 *v, f64 *out);
 void z_dipolar_conv(matmul_ctx_t *ctx, const c64 *v, c64 *out);
 
 /* ================================================================
+ * CG solver — Ax = b for SPD (or consistent PSD) systems
+ * ================================================================ */
+
+int d_cg_solve(matmul_ctx_t *ctx,
+               void (*A)(matmul_ctx_t *, const f64 *, f64 *),
+               void (*precond)(matmul_ctx_t *, const f64 *, f64 *),
+               const f64 *b, f64 *x, uint64_t n, f64 tol, uint64_t maxiter);
+
+int z_cg_solve(matmul_ctx_t *ctx,
+               void (*A)(matmul_ctx_t *, const c64 *, c64 *),
+               void (*precond)(matmul_ctx_t *, const c64 *, c64 *),
+               const c64 *b, c64 *x, uint64_t n, f64 tol, uint64_t maxiter);
+
+/* ================================================================
  * Solver internals
  * ================================================================ */
 
