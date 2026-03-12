@@ -384,6 +384,63 @@ TEST(bdg_deflate_auto_no_null_vectors) {
   bdg_free(&bdg);
 }
 
+/* ================================================================
+ * Integration: 1D uniform BEC with deflation
+ *
+ * Without deflation, the lowest eigenvalue is the (near-zero)
+ * Goldstone mode. With deflation, the lowest eigenvalue should be
+ * the first physical Bogoliubov mode: omega = k*sqrt(k^2/2 + g*n).
+ * For k = 2*pi/L (smallest nonzero k), g=1, n=1, L=20:
+ *   k1 = 2*pi/20 = pi/10
+ *   omega1 = k1 * sqrt(k1^2/2 + 1) = pi/10 * sqrt(pi^2/200 + 1)
+ * ================================================================ */
+TEST(integration_1d_uniform_with_deflation) {
+  const uint64_t N = 128;
+  const f64 L = 20.0;
+  const f64 g = 1.0;
+  const f64 n0 = 1.0;
+  const f64 psi0_val = sqrt(n0);
+  const f64 mu = g * n0;
+
+  bdg_t *bdg = bdg_alloc(1, &N, &L, 0);
+  bdg_set_system(bdg);
+  bdg_set_trap(bdg, NULL, NULL);
+
+  f64 *wf = xcalloc(N, sizeof(f64));
+  for (uint64_t i = 0; i < N; i++)
+    wf[i] = psi0_val;
+  bdg_set_wavefunction(bdg, wf, N);
+  safe_free((void **)&wf);
+
+  bdg_set_local_interactions(bdg, U_contact_K, U_contact_M, &g);
+  bdg_set_mu(bdg, mu);
+
+  /* Deflate */
+  const int ndefl = bdg_deflate_u1(bdg, 1e-6);
+  ASSERT(1 == ndefl);
+
+  /* Solve */
+  bdg_set_solver_params(bdg, 3, 8, 300, 1e-8);
+  const int ret = bdg_solve(bdg);
+  ASSERT(0 == ret);
+
+  const f64 *eigs = bdg_eigenvalues(bdg);
+
+  /* Bogoliubov dispersion: omega = k * sqrt(k^2/2 + g*n) */
+  const f64 k1 = 2.0 * M_PI / L;
+  const f64 omega1 = k1 * sqrt(0.5 * k1 * k1 + g * n0);
+
+  /* First eigenvalue should be the physical mode, not near-zero */
+  printf("  eigenvalues: %.6f %.6f %.6f\n", eigs[0], eigs[1], eigs[2]);
+  printf("  expected omega1 = %.6f\n", omega1);
+
+  /* The lowest eigenvalue should match omega1 (doubly degenerate: sin/cos) */
+  ASSERT_CLOSE(eigs[0], omega1, 1e-3);
+  ASSERT_CLOSE(eigs[1], omega1, 1e-3);
+
+  bdg_free(&bdg);
+}
+
 int main(void) {
   printf("test_goldstone:\n");
   RUN(matmulK_no_deflation_unchanged);
@@ -395,6 +452,7 @@ int main(void) {
   RUN(bdg_deflate_u1_uniform_bec);
   RUN(bdg_deflate_u1_not_ground_state);
   RUN(bdg_deflate_auto_no_null_vectors);
+  RUN(integration_1d_uniform_with_deflation);
   printf("\n  %d passed, %d failed\n", tests_passed, tests_failed);
   return tests_failed;
 }
