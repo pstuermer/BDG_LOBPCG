@@ -188,6 +188,33 @@ int bdg_reuse_modes(bdg_t *bdg, f64 noise_frac);
 int bdg_solve(bdg_t *bdg);
 
 /* ================================================================
+ * Goldstone deflation
+ * ================================================================ */
+
+/** Set the spectral shift parameter (default: 1000). */
+void bdg_set_goldstone_xi(bdg_t *bdg, f64 xi);
+
+/**
+ * Deflate the U(1) Goldstone mode from K.
+ * Checks ||K*psi0|| / ||psi0|| < tol, then solves M*V0 = psi0
+ * via CG and stores the deflation vector.
+ * Must be called after bdg_set_mu.
+ * @return 1 if deflated, 0 if K*psi0 is not near-zero.
+ */
+int bdg_deflate_u1(bdg_t *bdg, f64 tol);
+
+/**
+ * Auto-detect and deflate null vectors of K and M via definite LOBPCG.
+ * Runs short LOBPCG on K (post-U1-deflation) and M to find near-zero
+ * eigenvalues. For each, computes the correct deflation vector via CG.
+ * Must be called after bdg_set_mu (and optionally after bdg_deflate_u1).
+ * @param n_check  Number of smallest eigenvalues to check per operator
+ * @param tol      Eigenvalue threshold for null-space membership
+ * @return total number of modes deflated.
+ */
+int bdg_deflate_auto(bdg_t *bdg, uint64_t n_check, f64 tol);
+
+/* ================================================================
  * Results — valid after bdg_solve returns 0
  * ================================================================ */
 

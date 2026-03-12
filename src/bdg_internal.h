@@ -224,6 +224,15 @@ void d_dipolar_conv(matmul_ctx_t *ctx, const f64 *v, f64 *out);
 void z_dipolar_conv(matmul_ctx_t *ctx, const c64 *v, c64 *out);
 
 /* ================================================================
+ * Goldstone deflation internals
+ * ================================================================ */
+
+int d_deflate_u1(bdg_t *bdg, f64 tol);
+int z_deflate_u1(bdg_t *bdg, f64 tol);
+int d_deflate_auto(bdg_t *bdg, uint64_t n_check, f64 tol);
+int z_deflate_auto(bdg_t *bdg, uint64_t n_check, f64 tol);
+
+/* ================================================================
  * CG solver — Ax = b for SPD (or consistent PSD) systems
  * ================================================================ */
 

@@ -252,6 +252,101 @@ TEST(cg_solve_with_precond) {
   matmul_ctx_free(&ctx);
 }
 
+/* ================================================================
+ * Test: bdg_deflate_u1 on 1D uniform BEC
+ *
+ * Uniform BEC: psi0 = sqrt(n0), V_trap = 0, contact g.
+ * K*psi0 = 0 guaranteed by GPE.
+ * After deflation: K_bar*psi0 should have large eigenvalue.
+ * ================================================================ */
+static f64 U_contact_K(const void *param, f64 density) {
+  const f64 g = *(const f64 *)param;
+  return g * density;
+}
+
+static f64 U_contact_M(const void *param, f64 density) {
+  return U_contact_K(param, density);
+}
+
+TEST(bdg_deflate_u1_uniform_bec) {
+  const uint64_t N = 64;
+  const f64 L = 10.0;
+  const f64 g = 1.0;
+  const f64 n0 = 1.0;
+  const f64 psi0_val = sqrt(n0);
+  const f64 mu = g * n0;  /* GPE: mu = g * |psi0|^2 for uniform */
+
+  bdg_t *bdg = bdg_alloc(1, &N, &L, 0);
+  bdg_set_system(bdg);
+  bdg_set_trap(bdg, NULL, NULL);
+
+  /* Uniform wavefunction */
+  f64 *wf = xcalloc(N, sizeof(f64));
+  for (uint64_t i = 0; i < N; i++)
+    wf[i] = psi0_val;
+  bdg_set_wavefunction(bdg, wf, N);
+  safe_free((void **)&wf);
+
+  bdg_set_local_interactions(bdg, U_contact_K, U_contact_M, &g);
+  bdg_set_mu(bdg, mu);
+
+  /* Deflate U(1) */
+  const int ndefl = bdg_deflate_u1(bdg, 1e-6);
+  ASSERT(1 == ndefl);
+
+  /* Verify: n_goldK = 1 and gold_vecK is non-NULL */
+  matmul_ctx_t *ctx = bdg->ctx;
+  ASSERT(1 == ctx->n_goldK);
+  ASSERT(NULL != ctx->gold_vecK);
+  ASSERT(NULL != ctx->gold_inv_normK);
+
+  /* Apply K_bar to psi0 and check it's NOT near zero anymore */
+  f64 *x = xcalloc(N, sizeof(f64));
+  f64 *y = xcalloc(N, sizeof(f64));
+  for (uint64_t i = 0; i < N; i++)
+    x[i] = psi0_val;
+  d_matmulK(ctx, x, y);
+  const f64 y_norm = d_nrm2(N, y);
+  const f64 x_norm = d_nrm2(N, x);
+  /* With deflation, ||K_bar * psi0|| / ||psi0|| should be >> 1 */
+  ASSERT(y_norm / x_norm > 10.0);
+
+  safe_free((void **)&x);
+  safe_free((void **)&y);
+  bdg_free(&bdg);
+}
+
+/* ================================================================
+ * Test: bdg_deflate_u1 returns 0 if K*psi0 is not near zero
+ * (e.g., psi0 is NOT a GPE ground state)
+ * ================================================================ */
+TEST(bdg_deflate_u1_not_ground_state) {
+  const uint64_t N = 32;
+  const f64 L = 10.0;
+  const f64 g = 1.0;
+
+  bdg_t *bdg = bdg_alloc(1, &N, &L, 0);
+  bdg_set_system(bdg);
+  bdg_set_trap(bdg, NULL, NULL);
+
+  /* Garbage wavefunction — NOT a ground state */
+  f64 *wf = xcalloc(N, sizeof(f64));
+  for (uint64_t i = 0; i < N; i++)
+    wf[i] = sin(2.0 * M_PI * (f64)i / (f64)N) + 0.5;
+  bdg_set_wavefunction(bdg, wf, N);
+  safe_free((void **)&wf);
+
+  bdg_set_local_interactions(bdg, U_contact_K, U_contact_M, &g);
+  bdg_set_mu(bdg, 0.5);
+
+  /* Should fail the residual check */
+  const int ndefl = bdg_deflate_u1(bdg, 1e-6);
+  ASSERT(0 == ndefl);
+  ASSERT(0 == bdg->ctx->n_goldK);
+
+  bdg_free(&bdg);
+}
+
 int main(void) {
   printf("test_goldstone:\n");
   RUN(matmulK_no_deflation_unchanged);
@@ -260,6 +355,8 @@ int main(void) {
   RUN(matmulM_deflation_shifts_null_vector);
   RUN(cg_solve_simple_spd);
   RUN(cg_solve_with_precond);
+  RUN(bdg_deflate_u1_uniform_bec);
+  RUN(bdg_deflate_u1_not_ground_state);
   printf("\n  %d passed, %d failed\n", tests_passed, tests_failed);
   return tests_failed;
 }
