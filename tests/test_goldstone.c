@@ -347,6 +347,43 @@ TEST(bdg_deflate_u1_not_ground_state) {
   bdg_free(&bdg);
 }
 
+/* ================================================================
+ * Test: bdg_deflate_auto finds no null vectors for a standard
+ * (non-supersolid) 1D BEC where M > 0.
+ * ================================================================ */
+TEST(bdg_deflate_auto_no_null_vectors) {
+  const uint64_t N = 64;
+  const f64 L = 10.0;
+  const f64 g = 1.0;
+  const f64 n0 = 1.0;
+  const f64 psi0_val = sqrt(n0);
+  const f64 mu = g * n0;
+
+  bdg_t *bdg = bdg_alloc(1, &N, &L, 0);
+  bdg_set_system(bdg);
+  bdg_set_trap(bdg, NULL, NULL);
+
+  f64 *wf = xcalloc(N, sizeof(f64));
+  for (uint64_t i = 0; i < N; i++)
+    wf[i] = psi0_val;
+  bdg_set_wavefunction(bdg, wf, N);
+  safe_free((void **)&wf);
+
+  bdg_set_local_interactions(bdg, U_contact_K, U_contact_M, &g);
+  bdg_set_mu(bdg, mu);
+  bdg_set_solver_params(bdg, 3, 6, 100, 1e-6);
+
+  /* First deflate U(1) so K_bar > 0 */
+  bdg_deflate_u1(bdg, 1e-6);
+
+  /* Auto-detect: M > 0 for standard BEC, so nothing to deflate */
+  const int n_auto = bdg_deflate_auto(bdg, 2, 1e-6);
+  ASSERT(0 == n_auto);
+  ASSERT(0 == bdg->ctx->n_goldM);
+
+  bdg_free(&bdg);
+}
+
 int main(void) {
   printf("test_goldstone:\n");
   RUN(matmulK_no_deflation_unchanged);
@@ -357,6 +394,7 @@ int main(void) {
   RUN(cg_solve_with_precond);
   RUN(bdg_deflate_u1_uniform_bec);
   RUN(bdg_deflate_u1_not_ground_state);
+  RUN(bdg_deflate_auto_no_null_vectors);
   printf("\n  %d passed, %d failed\n", tests_passed, tests_failed);
   return tests_failed;
 }
