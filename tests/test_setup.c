@@ -584,6 +584,36 @@ TEST(compute_mu_override) {
 }
 
 /* ----------------------------------------------------------------
+ * test_compute_mu_auto_complex: same as compute_mu_auto but complex path
+ * ---------------------------------------------------------------- */
+TEST(compute_mu_auto_complex) {
+    /* Same uniform BEC but complex path */
+    const uint64_t Ng = 64;
+    const uint64_t N[] = {Ng};
+    const f64 L[] = {10.0};
+    const f64 g = 1.0;
+    const f64 n0 = 2.0;
+    const f64 psi_val = sqrt(n0);
+    const f64 mu_expected = g * n0;
+
+    bdg_t *bdg = bdg_alloc(1, N, L, 1);  /* complex_psi0 = 1 */
+    bdg_set_system(bdg);
+
+    c64 wf[64];
+    for (uint64_t i = 0; i < Ng; i++) wf[i] = psi_val + 0.0 * I;
+    bdg_set_wavefunction(bdg, wf, Ng);
+
+    bdg_set_local_interactions(bdg, contact_int, contact_int, &g);
+
+    bdg_set_solver_params(bdg, 2, 4, 5, 1e-6);
+    bdg_solve(bdg);
+
+    ASSERT_CLOSE(bdg_get_mu(bdg), mu_expected, 1e-10);
+
+    bdg_free(&bdg);
+}
+
+/* ----------------------------------------------------------------
  * test_trap_additive: calling set_trap twice adds both potentials
  * ---------------------------------------------------------------- */
 TEST(trap_additive) {
@@ -808,6 +838,7 @@ int main(void) {
     RUN(get_mu);
     RUN(compute_mu_auto);
     RUN(compute_mu_override);
+    RUN(compute_mu_auto_complex);
     RUN(trap_additive);
 
     printf("\nReset:\n");
