@@ -1,5 +1,7 @@
 #include "bdg_internal.h"
 #include "profile.h"
+#include "lobpcg/blas_wrapper.h"
+#include <complex.h>
 #include <string.h>
 
 #ifndef M_PI
@@ -217,11 +219,45 @@ int bdg_reuse_modes(bdg_t *bdg, f64 noise_frac) {
 }
 
 /* ----------------------------------------------------------------
+ * compute_mu — Rayleigh quotient mu = <wf|K|wf> / <wf|wf>
+ * ---------------------------------------------------------------- */
+static void compute_mu_d(bdg_t *bdg) {
+  matmul_ctx_t *ctx = bdg->ctx;
+  const uint64_t size = ctx->size;
+  const f64 *wf = (const f64 *)ctx->wf;
+  f64 *scratch = (f64 *)ctx->c_wrk2;
+
+  d_matmulK(ctx, wf, scratch);
+  const f64 mu = d_dot(size, wf, scratch) / d_dot(size, wf, wf);
+  bdg_set_mu(bdg, mu);
+}
+
+static void compute_mu_z(bdg_t *bdg) {
+  matmul_ctx_t *ctx = bdg->ctx;
+  const uint64_t size = ctx->size;
+  const c64 *wf = (const c64 *)ctx->wf;
+  c64 *scratch = ctx->c_wrk2;
+
+  z_matmulK(ctx, wf, scratch);
+  const f64 mu = creal(z_dotc(size, wf, scratch))
+               / creal(z_dotc(size, wf, wf));
+  bdg_set_mu(bdg, mu);
+}
+
+/* ----------------------------------------------------------------
  * bdg_solve — dispatches to d or z path
  * ---------------------------------------------------------------- */
 int bdg_solve(bdg_t *bdg) {
     BDG_REQUIRE(bdg, BDG_HAS_SYSTEM, "bdg_solve");
-    BDG_REQUIRE(bdg, BDG_HAS_MU, "bdg_solve");
+
+    /* Auto-compute mu if not set by user */
+    if (0 == (bdg->state & BDG_HAS_MU)) {
+      if (bdg->complex_psi0)
+        compute_mu_z(bdg);
+      else
+        compute_mu_d(bdg);
+    }
+
     if (bdg->complex_psi0)
         return bdg_solve_z(bdg);
     else

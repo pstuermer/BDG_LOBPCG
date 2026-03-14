@@ -126,8 +126,10 @@ void bdg_set_local_interactions(bdg_t *bdg,
                                 const void *param);
 
 /**
- * Subtract chemical potential from both localTermK and localTermM.
- * Also stores mu for the preconditioner.
+ * Manually set chemical potential (optional override).
+ * If not called, bdg_solve computes mu automatically as the
+ * Rayleigh quotient mu = <psi0|K|psi0> / ||psi0||^2.
+ * Subtracts mu from localTermK and localTermM; stores for preconditioner.
  */
 void bdg_set_mu(bdg_t *bdg, f64 mu);
 

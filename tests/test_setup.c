@@ -524,6 +524,66 @@ TEST(get_mu) {
 }
 
 /* ----------------------------------------------------------------
+ * test_compute_mu_auto: bdg_solve auto-computes mu via Rayleigh quotient
+ * ---------------------------------------------------------------- */
+TEST(compute_mu_auto) {
+    /* 1D uniform BEC: psi = sqrt(n0), V_trap = 0, U_intK = g*n
+     * localTermK[i] = g * n0, kinetic(psi) ≈ 0 (uniform)
+     * => mu = <psi|K|psi>/<psi|psi> = g * n0
+     */
+    const uint64_t Ng = 64;
+    const uint64_t N[] = {Ng};
+    const f64 L[] = {10.0};
+    const f64 g = 1.0;
+    const f64 n0 = 2.0;
+    const f64 psi_val = sqrt(n0);
+    const f64 mu_expected = g * n0;
+
+    bdg_t *bdg = bdg_alloc(1, N, L, 0);
+    bdg_set_system(bdg);
+
+    f64 wf[64];
+    for (uint64_t i = 0; i < Ng; i++) wf[i] = psi_val;
+    bdg_set_wavefunction(bdg, wf, Ng);
+
+    bdg_set_local_interactions(bdg, contact_int, contact_int, &g);
+
+    /* Do NOT call bdg_set_mu — let bdg_solve compute it */
+    bdg_set_solver_params(bdg, 2, 4, 5, 1e-6);
+    bdg_solve(bdg);
+
+    ASSERT_CLOSE(bdg_get_mu(bdg), mu_expected, 1e-10);
+
+    bdg_free(&bdg);
+}
+
+/* ----------------------------------------------------------------
+ * test_compute_mu_override: user-supplied mu skips auto-compute
+ * ---------------------------------------------------------------- */
+TEST(compute_mu_override) {
+    /* When user calls bdg_set_mu, auto-compute is skipped */
+    const uint64_t Ng = 64;
+    const uint64_t N[] = {Ng};
+    const f64 L[] = {10.0};
+    const f64 g = 1.0;
+    const f64 override_mu = 999.0;
+
+    bdg_t *bdg = bdg_alloc(1, N, L, 0);
+    bdg_set_system(bdg);
+
+    f64 wf[64];
+    for (uint64_t i = 0; i < Ng; i++) wf[i] = 1.0;
+    bdg_set_wavefunction(bdg, wf, Ng);
+
+    bdg_set_local_interactions(bdg, contact_int, contact_int, &g);
+    bdg_set_mu(bdg, override_mu);
+
+    ASSERT_CLOSE(bdg_get_mu(bdg), override_mu, 1e-14);
+
+    bdg_free(&bdg);
+}
+
+/* ----------------------------------------------------------------
  * test_trap_additive: calling set_trap twice adds both potentials
  * ---------------------------------------------------------------- */
 TEST(trap_additive) {
@@ -746,6 +806,8 @@ int main(void) {
     RUN(local_interactions_contact);
     RUN(set_mu);
     RUN(get_mu);
+    RUN(compute_mu_auto);
+    RUN(compute_mu_override);
     RUN(trap_additive);
 
     printf("\nReset:\n");
