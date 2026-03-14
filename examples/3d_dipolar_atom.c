@@ -55,7 +55,6 @@ int main(void) {
   bdg_load_wavefunction(bdg, "examples/3d_dipolar_wf.dat");
   bdg_set_local_interactions(bdg, U_intK, U_intM, param);
   bdg_set_dipolar(bdg, g_ddi, dir_ddi, cutoff_R);
-  bdg_set_mu(bdg, 110.14092367);
   bdg_set_solver_params(bdg, 20, 30, 1000, 1.0e-5);
   bdg_set_init_mode(bdg, BDG_INIT_PLANEWAVE, NULL, (void *)(intptr_t)BDG_GEOM_RING);
 
@@ -63,6 +62,7 @@ int main(void) {
   const int ret = bdg_solve(bdg);
   const f64 elapsed = omp_get_wtime() - start;
 
+  printf("mu (auto-computed): %.12f\n", bdg_get_mu(bdg));
   printf("bdg_solve returned %d\n", ret);
   if (0 == ret) {
     const uint64_t nconv = bdg_converged(bdg);

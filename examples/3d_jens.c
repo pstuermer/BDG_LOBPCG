@@ -56,8 +56,6 @@ int main(void) {
   bdg_load_wavefunction(bdg, "examples/3d_jens_wf.dat");
   bdg_set_local_interactions(bdg, U_intK, U_intM, param);
   bdg_set_dipolar(bdg, g_ddi, dir_ddi, cutoff_R);
-  // needs to be set last
-  bdg_set_mu(bdg, 11.976798753);
 
   const uint64_t nev = 8;
   const uint64_t sizeSub = 12;
@@ -70,6 +68,7 @@ int main(void) {
   const int ret = bdg_solve(bdg);
   const f64 elapsed = omp_get_wtime() - start;
 
+  printf("mu (auto-computed): %.12f\n", bdg_get_mu(bdg));
   printf("bdg_solve returned %d\n", ret);
   if (0 == ret) {
     const uint64_t nconv = bdg_converged(bdg);
