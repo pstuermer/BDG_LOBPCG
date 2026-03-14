@@ -24,7 +24,7 @@ void FN(matmulK)(matmul_ctx_t *ctx, const CTYPE *x, CTYPE *y) {
         y[i] += ltK[i] * x[i];
     BDG_TOC(t_elem, t_matmulK_elem);
 
-    /* Goldstone deflation: rank-1 shifts for null vectors of K */
+    /* Goldstone deflation: rank-1 shift K̲ = K + ξ |V₀><V₀| / ||V₀||² */
     for (uint64_t g = 0; g < ctx->n_goldK; g++) {
         const CTYPE *v0 = (const CTYPE *)ctx->gold_vecK + g * size;
         const CTYPE alpha = dot(size, v0, x) * ctx->gold_inv_normK[g];

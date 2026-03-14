@@ -191,7 +191,17 @@ int bdg_solve(bdg_t *bdg);
  * Goldstone deflation
  * ================================================================ */
 
-/** Set the spectral shift parameter (default: 1000). */
+/**
+ * Set the Goldstone deflation shift parameter xi (default: 1000).
+ *
+ * The shift K_ = K + xi * V0*V0^H / ||V0||^2 moves the Goldstone zero
+ * eigenvalue to a finite value, breaking the B-isotropic singularity.
+ *
+ * Guideline: set xi just above the target eigenvalue range.  Large xi
+ * inflates the operator norm, amplifies floating-point round-off in
+ * the rank-1 update, and degrades convergence of physical eigenpairs.
+ * For a spectrum starting at lambda_min, a good choice is xi ~ 1-10 * lambda_min.
+ */
 void bdg_set_goldstone_xi(bdg_t *bdg, f64 xi);
 
 /**

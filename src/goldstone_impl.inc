@@ -1,17 +1,25 @@
 /**
  * @file goldstone_impl.inc
- * @brief Type-generic Goldstone deflation: detection + CG for deflation vectors.
+ * @brief Type-generic Goldstone deflation: detection + rank-1 spectral shift.
  *
- * Deflation theory: goldstone_modes_derivation.md, Sections 4.3-4.5.
- * V0 = M^{-1} * psi0 (not psi0 itself!) preserves nonzero LREP eigenvalues.
+ * Shift formula: K̲ = K + ξ * |V₀><V₀| / ||V₀||²
+ * where V₀ = M⁻¹ψ₀ for U(1) deflation.
+ * Analogous shift on M for translational modes.
  */
 
 #include "bdg_internal.h"
 #include "lobpcg/blas_wrapper.h"
 #include "lobpcg.h"
+#include <complex.h>
 #include <inttypes.h>
 #include <math.h>
 #include <stdio.h>
+
+#ifdef CTYPE_IS_REAL
+  #define REAL_PART(x) (x)
+#else
+  #define REAL_PART(x) creal(x)
+#endif
 
 /* ----------------------------------------------------------------
  * LinearOperator typedef — middle-infix naming, can't use FN()
@@ -56,7 +64,75 @@ static f64 FN(gold_store_vec)(void **vecs, f64 **inv_norms, uint64_t *count,
 }
 
 /* ----------------------------------------------------------------
- * deflate_u1: detect K*psi0 = 0, compute V0 = M^{-1}*psi0 via CG
+ * gold_precompute_sm: Sherman-Morrison preconditioner correction.
+ *
+ * For each deflation vector V₀_i, precompute:
+ *   w₀_i = T_K(V₀_i)
+ *   ξ̃_i  = ξ / ||V₀_i||²   (effective shift with normalization)
+ *   σ_i  = ξ̃_i / (1 + ξ̃_i · Re⟨V₀_i, w₀_i⟩)
+ * Analogous for M deflation vectors.
+ * ---------------------------------------------------------------- */
+void FN(gold_precompute_sm)(matmul_ctx_t *ctx) {
+  const uint64_t size = ctx->size;
+  const f64 xi = ctx->gold_xi;
+
+  /* ---- K deflation ---- */
+  if (ctx->n_goldK > 0) {
+    const uint64_t nK = ctx->n_goldK;
+
+    /* Free old arrays if called twice */
+    safe_free(&ctx->gold_smK);
+    safe_free((void **)&ctx->gold_sigmaK);
+
+    CTYPE *smK = xcalloc(nK * size, sizeof(CTYPE));
+    f64 *sigK = xcalloc(nK, sizeof(f64));
+
+    for (uint64_t g = 0; g < nK; g++) {
+      const CTYPE *v0 = (const CTYPE *)ctx->gold_vecK + g * size;
+      CTYPE *w0 = &smK[g * size];
+
+      FN(precondK)(ctx, v0, w0);
+
+      const f64 xi_eff = xi * ctx->gold_inv_normK[g]; /* ξ/||V₀||² */
+      const CTYPE d = dot(size, v0, w0);
+      const f64 v0w0 = REAL_PART(d);
+      sigK[g] = xi_eff / (1.0 + xi_eff * v0w0);
+    }
+
+    ctx->gold_smK = smK;
+    ctx->gold_sigmaK = sigK;
+  }
+
+  /* ---- M deflation ---- */
+  if (ctx->n_goldM > 0) {
+    const uint64_t nM = ctx->n_goldM;
+
+    /* Free old arrays if called twice */
+    safe_free(&ctx->gold_smM);
+    safe_free((void **)&ctx->gold_sigmaM);
+
+    CTYPE *smM = xcalloc(nM * size, sizeof(CTYPE));
+    f64 *sigM = xcalloc(nM, sizeof(f64));
+
+    for (uint64_t g = 0; g < nM; g++) {
+      const CTYPE *w = (const CTYPE *)ctx->gold_vecM + g * size;
+      CTYPE *tw = &smM[g * size];
+
+      FN(precondM)(ctx, w, tw);
+
+      const f64 xi_eff = xi * ctx->gold_inv_normM[g]; /* ξ/||W||² */
+      const CTYPE d = dot(size, w, tw);
+      const f64 wtw = REAL_PART(d);
+      sigM[g] = xi_eff / (1.0 + xi_eff * wtw);
+    }
+
+    ctx->gold_smM = smM;
+    ctx->gold_sigmaM = sigM;
+  }
+}
+
+/* ----------------------------------------------------------------
+ * deflate_u1: detect K*psi0 ≈ 0, compute V0 = M^{-1}*psi0 via CG
  * ---------------------------------------------------------------- */
 int FN(deflate_u1)(bdg_t *bdg, f64 tol) {
   matmul_ctx_t *ctx = bdg->ctx;
@@ -83,16 +159,25 @@ int FN(deflate_u1)(bdg_t *bdg, f64 tol) {
   /* 2. CG solve: M * V0 = psi0 */
   CTYPE *V0 = xcalloc(size, sizeof(CTYPE));
   const int cg_ret = FN(cg_solve)(ctx, FN(matmulM), FN(precondM),
-                                   wf, V0, size, 1e-6, 500);
-  if (0 != cg_ret)
-    printf("  bdg_deflate_u1: WARNING — CG did not converge\n");
+                                   wf, V0, size, 1e-12, 5000);
+
+  /* Compute and report final CG residual: ||M*V0 - psi0|| / ||psi0|| */
+  CTYPE *Mv = xcalloc(size, sizeof(CTYPE));
+  FN(matmulM)(ctx, V0, Mv);
+  for (uint64_t i = 0; i < size; i++)
+    Mv[i] -= wf[i];
+  const f64 cg_res = nrm2(size, Mv) / wf_norm;
+  safe_free((void **)&Mv);
+
+  printf("  bdg_deflate_u1: CG %s — ||M*V0 - psi0||/||psi0|| = %.2e\n",
+         (0 == cg_ret) ? "converged" : "WARNING: did not converge", cg_res);
 
   /* 3. Store deflation vector */
   const f64 V0_norm = FN(gold_store_vec)(&ctx->gold_vecK, &ctx->gold_inv_normK,
                                           &ctx->n_goldK, V0, size);
   safe_free((void **)&V0);
 
-  printf("  bdg_deflate_u1: U(1) mode deflated (V0 norm = %.6e)\n", V0_norm);
+  printf("  bdg_deflate_u1: U(1) mode deflated (||V0|| = %.6e)\n", V0_norm);
   return 1;
 }
 
@@ -110,6 +195,18 @@ static void FN(matvec_M_linop)(const FN_linop_t *op,
                                 CTYPE *restrict x, CTYPE *restrict y) {
   matmul_ctx_t *ctx = (matmul_ctx_t *)op->ctx->data;
   FN(matmulM)(ctx, x, y);
+}
+
+static void FN(precond_K_linop)(const FN_linop_t *op,
+                                 CTYPE *restrict x, CTYPE *restrict y) {
+  matmul_ctx_t *ctx = (matmul_ctx_t *)op->ctx->data;
+  FN(precondK)(ctx, x, y);
+}
+
+static void FN(precond_M_linop)(const FN_linop_t *op,
+                                 CTYPE *restrict x, CTYPE *restrict y) {
+  matmul_ctx_t *ctx = (matmul_ctx_t *)op->ctx->data;
+  FN(precondM)(ctx, x, y);
 }
 
 /* ----------------------------------------------------------------
@@ -155,9 +252,11 @@ int FN(deflate_auto)(bdg_t *bdg, uint64_t n_check, f64 tol) {
 
     FN_linop_t *A_K = linop_create(size, size,
                                    FN(matvec_K_linop), NULL, &lctx);
+    FN_linop_t *T_K = linop_create(size, size,
+                                   FN(precond_K_linop), NULL, &lctx);
     alg->A = A_K;
     alg->B = NULL;
-    alg->T = NULL;
+    alg->T = T_K;
     alg->maxIter = 50;
     alg->tol = tol * 0.1;
 
@@ -173,7 +272,10 @@ int FN(deflate_auto)(bdg_t *bdg, uint64_t n_check, f64 tol) {
         /* CG: M * V0 = eigvec */
         CTYPE *eigvec = &alg->S[j * size];
         CTYPE *V0 = xcalloc(size, sizeof(CTYPE));
-        FN(cg_solve)(ctx, FN(matmulM), FN(precondM), eigvec, V0, size, 1e-6, 500);
+        const int cg1 = FN(cg_solve)(ctx, FN(matmulM), FN(precondM),
+                                      eigvec, V0, size, 1e-12, 5000);
+        printf("  deflate_auto: K CG %s\n",
+               (0 == cg1) ? "converged" : "WARNING: did not converge");
 
         FN(gold_store_vec)(&ctx->gold_vecK, &ctx->gold_inv_normK,
                            &ctx->n_goldK, V0, size);
@@ -183,6 +285,7 @@ int FN(deflate_auto)(bdg_t *bdg, uint64_t n_check, f64 tol) {
     }
 
     linop_destroy(&A_K);
+    linop_destroy(&T_K);
     lobpcg_free(&alg);
   }
 
@@ -199,9 +302,11 @@ int FN(deflate_auto)(bdg_t *bdg, uint64_t n_check, f64 tol) {
 
     FN_linop_t *A_M = linop_create(size, size,
                                    FN(matvec_M_linop), NULL, &lctx);
+    FN_linop_t *T_M = linop_create(size, size,
+                                   FN(precond_M_linop), NULL, &lctx);
     alg->A = A_M;
     alg->B = NULL;
-    alg->T = NULL;
+    alg->T = T_M;
     alg->maxIter = 50;
     alg->tol = tol * 0.1;
 
@@ -217,7 +322,10 @@ int FN(deflate_auto)(bdg_t *bdg, uint64_t n_check, f64 tol) {
         /* CG: K_bar * W = eigvec (K_bar already includes U(1) shift) */
         CTYPE *eigvec = &alg->S[j * size];
         CTYPE *W = xcalloc(size, sizeof(CTYPE));
-        FN(cg_solve)(ctx, FN(matmulK), FN(precondK), eigvec, W, size, 1e-6, 500);
+        const int cg2 = FN(cg_solve)(ctx, FN(matmulK), FN(precondK),
+                                      eigvec, W, size, 1e-12, 5000);
+        printf("  deflate_auto: M CG %s\n",
+               (0 == cg2) ? "converged" : "WARNING: did not converge");
 
         FN(gold_store_vec)(&ctx->gold_vecM, &ctx->gold_inv_normM,
                            &ctx->n_goldM, W, size);
@@ -227,6 +335,7 @@ int FN(deflate_auto)(bdg_t *bdg, uint64_t n_check, f64 tol) {
     }
 
     linop_destroy(&A_M);
+    linop_destroy(&T_M);
     lobpcg_free(&alg);
   }
 

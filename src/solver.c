@@ -259,6 +259,10 @@ int bdg_solve_d(bdg_t *bdg) {
   }
   }
 
+  /* Precompute Sherman-Morrison correction for preconditioner */
+  if (ctx->n_goldK > 0 || ctx->n_goldM > 0)
+    d_gold_precompute_sm(ctx);
+
   /* 6. Solve */
   d_ilobpcg(alg);
 
@@ -413,6 +417,10 @@ int bdg_solve_z(bdg_t *bdg) {
     safe_free((void **)&kvecs);
   }
   }
+
+  /* Precompute Sherman-Morrison correction for preconditioner */
+  if (ctx->n_goldK > 0 || ctx->n_goldM > 0)
+    z_gold_precompute_sm(ctx);
 
   /* 6. Solve */
   z_ilobpcg(alg);

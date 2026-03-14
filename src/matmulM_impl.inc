@@ -40,7 +40,7 @@ void FN(matmulM)(matmul_ctx_t *ctx, const CTYPE *x, CTYPE *y) {
     BDG_TOC(t_elem, t_matmulM_elem);
   }
 
-  /* Goldstone deflation: rank-1 shifts for null vectors of M */
+  /* Goldstone deflation: rank-1 shift M̲ = M + ξ |W><W| / ||W||² */
   for (uint64_t g = 0; g < ctx->n_goldM; g++) {
     const CTYPE *w = (const CTYPE *)ctx->gold_vecM + g * size;
     const CTYPE alpha = dot(size, w, x) * ctx->gold_inv_normM[g];

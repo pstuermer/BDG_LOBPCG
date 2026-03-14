@@ -119,6 +119,12 @@ typedef struct {
     f64 *gold_inv_normM;     /* 1/||W_j||^2  [n_goldM] (or NULL) */
     f64 gold_xi;             /* shift parameter (default 1000) */
 
+    /* Sherman-Morrison preconditioner correction (precomputed) */
+    void *gold_smK;          /* T_K(V₀_i), CTYPE[n_goldK * size] (or NULL) */
+    void *gold_smM;          /* T_M(W_j),  CTYPE[n_goldM * size] (or NULL) */
+    f64 *gold_sigmaK;        /* σ_i = ξ/(1 + ξ·⟨V₀_i, w₀_i⟩) [n_goldK] (or NULL) */
+    f64 *gold_sigmaM;        /* σ_j [n_goldM] (or NULL) */
+
     /* Flag: is wavefunction complex? (mirrors bdg_t.complex_psi0) */
     int complex_psi0;
 } matmul_ctx_t;
@@ -231,6 +237,9 @@ int d_deflate_u1(bdg_t *bdg, f64 tol);
 int z_deflate_u1(bdg_t *bdg, f64 tol);
 int d_deflate_auto(bdg_t *bdg, uint64_t n_check, f64 tol);
 int z_deflate_auto(bdg_t *bdg, uint64_t n_check, f64 tol);
+
+void d_gold_precompute_sm(matmul_ctx_t *ctx);
+void z_gold_precompute_sm(matmul_ctx_t *ctx);
 
 /* ================================================================
  * CG solver — Ax = b for SPD (or consistent PSD) systems
