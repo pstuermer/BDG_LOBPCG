@@ -240,6 +240,9 @@ const void *bdg_modes_u(const bdg_t *bdg);
 /** Eigenmodes v-part: size*nev column-major. Cast to f64* or c64*. */
 const void *bdg_modes_v(const bdg_t *bdg);
 
+/** Chemical potential (auto-computed by bdg_solve, or set via bdg_set_mu). */
+f64 bdg_get_mu(const bdg_t *bdg);
+
 /* ================================================================
  * File I/O
  * ================================================================ */

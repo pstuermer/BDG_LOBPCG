@@ -246,3 +246,7 @@ const void *bdg_modes_u(const bdg_t *bdg) {
 const void *bdg_modes_v(const bdg_t *bdg) {
     return bdg->modes_v;
 }
+
+f64 bdg_get_mu(const bdg_t *bdg) {
+    return bdg->ctx->mu;
+}

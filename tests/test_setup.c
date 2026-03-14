@@ -500,6 +500,30 @@ TEST(set_mu) {
 }
 
 /* ----------------------------------------------------------------
+ * test_get_mu: verify bdg_get_mu returns the value set by bdg_set_mu
+ * ---------------------------------------------------------------- */
+TEST(get_mu) {
+    const uint64_t N[] = {8};
+    const f64 L[] = {4.0};
+    const f64 mu = 3.0;
+
+    bdg_t *bdg = bdg_alloc(1, N, L, 0);
+    bdg_set_system(bdg);
+
+    f64 wf[8];
+    for (uint64_t i = 0; i < 8; i++) wf[i] = 1.0;
+    bdg_set_wavefunction(bdg, wf, 8);
+
+    f64 g = 1.0;
+    bdg_set_local_interactions(bdg, contact_int, contact_int, &g);
+    bdg_set_mu(bdg, mu);
+
+    ASSERT_CLOSE(bdg_get_mu(bdg), mu, 1e-14);
+
+    bdg_free(&bdg);
+}
+
+/* ----------------------------------------------------------------
  * test_trap_additive: calling set_trap twice adds both potentials
  * ---------------------------------------------------------------- */
 TEST(trap_additive) {
@@ -721,6 +745,7 @@ int main(void) {
     RUN(wavefunction_complex);
     RUN(local_interactions_contact);
     RUN(set_mu);
+    RUN(get_mu);
     RUN(trap_additive);
 
     printf("\nReset:\n");
