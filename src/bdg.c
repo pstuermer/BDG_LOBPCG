@@ -252,6 +252,8 @@ int bdg_solve(bdg_t *bdg) {
 
     /* Auto-compute mu if not set by user */
     if (0 == (bdg->state & BDG_HAS_MU)) {
+      BDG_REQUIRE(bdg, BDG_HAS_WF, "bdg_solve (auto-compute mu)");
+      BDG_REQUIRE(bdg, BDG_HAS_INTERACTIONS, "bdg_solve (auto-compute mu)");
       if (bdg->complex_psi0)
         compute_mu_z(bdg);
       else
