@@ -110,6 +110,21 @@ typedef struct {
     f64 *precond_sqrtK; /* 1/sqrt(localTermK + mu), length size (or NULL) */
     f64 *precond_sqrtM; /* 1/sqrt(localTermM + mu), length size (or NULL) */
 
+    /* Goldstone deflation */
+    uint64_t n_goldK;        /* number of K deflation vectors */
+    uint64_t n_goldM;        /* number of M deflation vectors */
+    void *gold_vecK;         /* CTYPE[n_goldK * size], column-major (or NULL) */
+    void *gold_vecM;         /* CTYPE[n_goldM * size], column-major (or NULL) */
+    f64 *gold_inv_normK;     /* 1/||V0_i||^2 [n_goldK] (or NULL) */
+    f64 *gold_inv_normM;     /* 1/||W_j||^2  [n_goldM] (or NULL) */
+    f64 gold_xi;             /* shift parameter (default 1000) */
+
+    /* Sherman-Morrison preconditioner correction (precomputed) */
+    void *gold_smK;          /* T_K(V₀_i), CTYPE[n_goldK * size] (or NULL) */
+    void *gold_smM;          /* T_M(W_j),  CTYPE[n_goldM * size] (or NULL) */
+    f64 *gold_sigmaK;        /* σ_i = ξ/(1 + ξ·⟨V₀_i, w₀_i⟩) [n_goldK] (or NULL) */
+    f64 *gold_sigmaM;        /* σ_j [n_goldM] (or NULL) */
+
     /* Flag: is wavefunction complex? (mirrors bdg_t.complex_psi0) */
     int complex_psi0;
 } matmul_ctx_t;
@@ -156,47 +171,47 @@ void          matmul_ctx_set_system(matmul_ctx_t *ctx, int complex_psi0);
  * Kinetic operator — d (r2c/c2r) and z (c2c)
  * ================================================================ */
 
-void kinetic_d(matmul_ctx_t *ctx, const f64 *x, f64 *y);
-void kinetic_z(matmul_ctx_t *ctx, const c64 *x, c64 *y);
+void d_kinetic(matmul_ctx_t *ctx, const f64 *x, f64 *y);
+void z_kinetic(matmul_ctx_t *ctx, const c64 *x, c64 *y);
 
 /* ================================================================
  * K operator: kinetic + localTermK
  * ================================================================ */
 
-void matmulK_d(matmul_ctx_t *ctx, const f64 *x, f64 *y);
-void matmulK_z(matmul_ctx_t *ctx, const c64 *x, c64 *y);
+void d_matmulK(matmul_ctx_t *ctx, const f64 *x, f64 *y);
+void z_matmulK(matmul_ctx_t *ctx, const c64 *x, c64 *y);
 
 /* ================================================================
  * M operator: kinetic + localTermM + 2*dipolar_conv (optional)
  * ================================================================ */
 
-void matmulM_d(matmul_ctx_t *ctx, const f64 *x, f64 *y);
-void matmulM_z(matmul_ctx_t *ctx, const c64 *x, c64 *y);
+void d_matmulM(matmul_ctx_t *ctx, const f64 *x, f64 *y);
+void z_matmulM(matmul_ctx_t *ctx, const c64 *x, c64 *y);
 
 /* ================================================================
  * Lrep operator: block [K; M] on stacked [u; v]
  * ================================================================ */
 
-void matmulLrep_d(matmul_ctx_t *ctx, const f64 *x, f64 *y);
-void matmulLrep_z(matmul_ctx_t *ctx, const c64 *x, c64 *y);
+void d_matmulLrep(matmul_ctx_t *ctx, const f64 *x, f64 *y);
+void z_matmulLrep(matmul_ctx_t *ctx, const c64 *x, c64 *y);
 
 /* ================================================================
  * Swap operator: y = [x_lower; x_upper]
  * ================================================================ */
 
-void matmulSwap_d(matmul_ctx_t *ctx, const f64 *x, f64 *y);
-void matmulSwap_z(matmul_ctx_t *ctx, const c64 *x, c64 *y);
+void d_matmulSwap(matmul_ctx_t *ctx, const f64 *x, f64 *y);
+void z_matmulSwap(matmul_ctx_t *ctx, const c64 *x, c64 *y);
 
 /* ================================================================
  * Product preconditioner: T = [T_K; T_M]
  * ================================================================ */
 
-void precondK_d(matmul_ctx_t *ctx, const f64 *x, f64 *y);
-void precondK_z(matmul_ctx_t *ctx, const c64 *x, c64 *y);
-void precondM_d(matmul_ctx_t *ctx, const f64 *x, f64 *y);
-void precondM_z(matmul_ctx_t *ctx, const c64 *x, c64 *y);
-void precondLrep_d(matmul_ctx_t *ctx, const f64 *x, f64 *y);
-void precondLrep_z(matmul_ctx_t *ctx, const c64 *x, c64 *y);
+void d_precondK(matmul_ctx_t *ctx, const f64 *x, f64 *y);
+void z_precondK(matmul_ctx_t *ctx, const c64 *x, c64 *y);
+void d_precondM(matmul_ctx_t *ctx, const f64 *x, f64 *y);
+void z_precondM(matmul_ctx_t *ctx, const c64 *x, c64 *y);
+void d_precondLrep(matmul_ctx_t *ctx, const f64 *x, f64 *y);
+void z_precondLrep(matmul_ctx_t *ctx, const c64 *x, c64 *y);
 
 /* ================================================================
  * Dipolar (3D only)
@@ -207,12 +222,38 @@ void dipolar_set_kernel(matmul_ctx_t *ctx, f64 g_ddi, const f64 *dipole_dir, f64
 
 /** Add mean-field dipolar potential to localTermK and localTermM. */
 void dipolar_add_meanfield(matmul_ctx_t *ctx);
-void dipolar_add_meanfield_d(matmul_ctx_t *ctx);
-void dipolar_add_meanfield_z(matmul_ctx_t *ctx);
+void d_dipolar_add_meanfield(matmul_ctx_t *ctx);
+void z_dipolar_add_meanfield(matmul_ctx_t *ctx);
 
 /** Perturbation-dependent dipolar convolution: conj(wf)*v → FFT → *kernel → IFFT → g_ddi*wf*result */
-void dipolar_conv_d(matmul_ctx_t *ctx, const f64 *v, f64 *out);
-void dipolar_conv_z(matmul_ctx_t *ctx, const c64 *v, c64 *out);
+void d_dipolar_conv(matmul_ctx_t *ctx, const f64 *v, f64 *out);
+void z_dipolar_conv(matmul_ctx_t *ctx, const c64 *v, c64 *out);
+
+/* ================================================================
+ * Goldstone deflation internals
+ * ================================================================ */
+
+int d_deflate_u1(bdg_t *bdg, f64 tol);
+int z_deflate_u1(bdg_t *bdg, f64 tol);
+int d_deflate_auto(bdg_t *bdg, uint64_t n_check, f64 tol);
+int z_deflate_auto(bdg_t *bdg, uint64_t n_check, f64 tol);
+
+void d_gold_precompute_sm(matmul_ctx_t *ctx);
+void z_gold_precompute_sm(matmul_ctx_t *ctx);
+
+/* ================================================================
+ * CG solver — Ax = b for SPD (or consistent PSD) systems
+ * ================================================================ */
+
+int d_cg_solve(matmul_ctx_t *ctx,
+               void (*A)(matmul_ctx_t *, const f64 *, f64 *),
+               void (*precond)(matmul_ctx_t *, const f64 *, f64 *),
+               const f64 *b, f64 *x, uint64_t n, f64 tol, uint64_t maxiter);
+
+int z_cg_solve(matmul_ctx_t *ctx,
+               void (*A)(matmul_ctx_t *, const c64 *, c64 *),
+               void (*precond)(matmul_ctx_t *, const c64 *, c64 *),
+               const c64 *b, c64 *x, uint64_t n, f64 tol, uint64_t maxiter);
 
 /* ================================================================
  * Solver internals

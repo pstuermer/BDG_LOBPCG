@@ -248,8 +248,8 @@ TEST(dipolar_conv_linearity_d) {
         v2[i] = 3.7 * v1[i];
     }
 
-    dipolar_conv_d(ctx, v1, out1);
-    dipolar_conv_d(ctx, v2, out2);
+    d_dipolar_conv(ctx, v1, out1);
+    d_dipolar_conv(ctx, v2, out2);
 
     for (uint64_t i = 0; i < size; i++)
         ASSERT_CLOSE(out2[i], 3.7 * out1[i], 1e-10);
@@ -294,8 +294,8 @@ TEST(dipolar_conv_dz_consistency) {
         vz[i] = vd[i] + 0.0 * I;
     }
 
-    dipolar_conv_d(ctx_d, vd, od);
-    dipolar_conv_z(ctx_z, vz, oz);
+    d_dipolar_conv(ctx_d, vd, od);
+    z_dipolar_conv(ctx_z, vz, oz);
 
     for (uint64_t i = 0; i < size; i++) {
         ASSERT_CLOSE(creal(oz[i]), od[i], 1e-10);

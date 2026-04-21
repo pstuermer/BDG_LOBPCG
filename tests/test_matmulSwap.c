@@ -56,7 +56,7 @@ TEST(matmulSwap_d_swaps_halves) {
     f64 x[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
     f64 y[6] = {0};
 
-    matmulSwap_d(ctx, x, y);
+    d_matmulSwap(ctx, x, y);
 
     /* Upper half of y should be lower half of x */
     ASSERT_CLOSE(y[0], 4.0, TOL);
@@ -82,8 +82,8 @@ TEST(matmulSwap_d_involution) {
     for (uint64_t i = 0; i < 2 * N; i++)
         x[i] = (f64)(i + 1) * 0.7;
 
-    matmulSwap_d(ctx, x, y1);
-    matmulSwap_d(ctx, y1, y2);
+    d_matmulSwap(ctx, x, y1);
+    d_matmulSwap(ctx, y1, y2);
 
     for (uint64_t i = 0; i < 2 * N; i++)
         ASSERT_CLOSE(y2[i], x[i], TOL);
@@ -102,7 +102,7 @@ TEST(matmulSwap_z_swaps_halves) {
                 4.0+0.4*I, 5.0+0.5*I, 6.0+0.6*I};
     c64 y[6] = {0};
 
-    matmulSwap_z(ctx, x, y);
+    z_matmulSwap(ctx, x, y);
 
     /* Upper half of y = lower half of x */
     ASSERT_CLOSE(creal(y[0]), 4.0, TOL);

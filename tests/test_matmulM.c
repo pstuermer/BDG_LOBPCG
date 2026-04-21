@@ -73,7 +73,7 @@ TEST(matmulM_d_planewave_no_dipolar) {
     for (uint64_t i = 0; i < size; i++)
         x[i] = cos((f64)i * 2.0 * M_PI / (f64)size);
 
-    matmulM_d(ctx, x, y);
+    d_matmulM(ctx, x, y);
 
     for (uint64_t i = 0; i < size; i++) {
         const f64 expected = 2.5 * cos((f64)i * 2.0 * M_PI / (f64)size);
@@ -101,8 +101,8 @@ TEST(matmulM_matches_K_no_dipolar) {
         x[i] = cos((f64)i * 2.0 * M_PI / (f64)size)
              + 0.5 * cos(3.0 * (f64)i * 2.0 * M_PI / (f64)size);
 
-    matmulK_d(ctx_K, x, yK);
-    matmulM_d(ctx_M, x, yM);
+    d_matmulK(ctx_K, x, yK);
+    d_matmulM(ctx_M, x, yM);
 
     for (uint64_t i = 0; i < size; i++)
         ASSERT_CLOSE(yM[i], yK[i], TOL);
@@ -134,8 +134,8 @@ TEST(matmulM_dz_consistency) {
         xz[i] = xd[i] + 0.0 * I;
     }
 
-    matmulM_d(ctx_d, xd, yd);
-    matmulM_z(ctx_z, xz, yz);
+    d_matmulM(ctx_d, xd, yd);
+    z_matmulM(ctx_z, xz, yz);
 
     for (uint64_t i = 0; i < N; i++) {
         ASSERT_CLOSE(creal(yz[i]), yd[i], TOL);
@@ -193,8 +193,8 @@ TEST(matmulM_d_3d_with_dipolar) {
                 x[iz * N[1] * N[0] + iy * N[0] + ix] = cos(zv);
             }
 
-    matmulK_d(ctx, x, yK);
-    matmulM_d(ctx, x, yM);
+    d_matmulK(ctx, x, yK);
+    d_matmulM(ctx, x, yM);
 
     /* K and M should differ because dipolar term is nonzero for cos(z) */
     f64 max_diff = 0.0;
@@ -256,8 +256,8 @@ TEST(matmulM_dz_3d_dipolar_consistency) {
         xz[i] = xd[i] + 0.0 * I;
     }
 
-    matmulM_d(ctx_d, xd, yd);
-    matmulM_z(ctx_z, xz, yz);
+    d_matmulM(ctx_d, xd, yd);
+    z_matmulM(ctx_z, xz, yz);
 
     for (uint64_t i = 0; i < size; i++) {
         ASSERT_CLOSE(creal(yz[i]), yd[i], 1e-10);

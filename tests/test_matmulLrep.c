@@ -82,13 +82,13 @@ TEST(matmulLrep_d_block_structure) {
 
     /* Apply Lrep to stacked vector */
     f64 *y_stacked = xcalloc(2 * size, sizeof(f64));
-    matmulLrep_d(ctx, x_stacked, y_stacked);
+    d_matmulLrep(ctx, x_stacked, y_stacked);
 
     /* Reference: apply K and M separately */
     f64 *yK_ref = xcalloc(size, sizeof(f64));
     f64 *yM_ref = xcalloc(size, sizeof(f64));
-    matmulK_d(ctx, x_stacked, yK_ref);
-    matmulM_d(ctx, &x_stacked[size], yM_ref);
+    d_matmulK(ctx, x_stacked, yK_ref);
+    d_matmulM(ctx, &x_stacked[size], yM_ref);
 
     /* Compare */
     for (uint64_t i = 0; i < size; i++) {
@@ -130,8 +130,8 @@ TEST(matmulLrep_d_equals_z) {
     f64 *yd = xcalloc(2 * size, sizeof(f64));
     c64 *yz = xcalloc(2 * size, sizeof(c64));
 
-    matmulLrep_d(ctx_d, xd, yd);
-    matmulLrep_z(ctx_z, xz, yz);
+    d_matmulLrep(ctx_d, xd, yd);
+    z_matmulLrep(ctx_z, xz, yz);
 
     for (uint64_t i = 0; i < 2 * size; i++) {
         ASSERT_CLOSE(creal(yz[i]), yd[i], TOL);

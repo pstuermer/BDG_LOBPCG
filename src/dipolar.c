@@ -76,7 +76,7 @@ void dipolar_set_kernel(matmul_ctx_t *ctx, f64 g_ddi, const f64 *dipole_dir,
  * ---------------------------------------------------------------- */
 void dipolar_add_meanfield(matmul_ctx_t *ctx) {
     if (ctx->complex_psi0)
-        dipolar_add_meanfield_z(ctx);
+        z_dipolar_add_meanfield(ctx);
     else
-        dipolar_add_meanfield_d(ctx);
+        d_dipolar_add_meanfield(ctx);
 }

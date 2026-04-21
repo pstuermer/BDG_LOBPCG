@@ -75,6 +75,16 @@ void matmul_ctx_free(matmul_ctx_t **pctx) {
   safe_free((void **)&ctx->c_wrk1);
   safe_free((void **)&ctx->c_wrk2);
 
+  /* Goldstone deflation */
+  safe_free((void **)&ctx->gold_vecK);
+  safe_free((void **)&ctx->gold_vecM);
+  safe_free((void **)&ctx->gold_inv_normK);
+  safe_free((void **)&ctx->gold_inv_normM);
+  safe_free((void **)&ctx->gold_smK);
+  safe_free((void **)&ctx->gold_smM);
+  safe_free((void **)&ctx->gold_sigmaK);
+  safe_free((void **)&ctx->gold_sigmaM);
+
   /* Grid arrays */
   safe_free((void **)&ctx->N);
   safe_free((void **)&ctx->L);
@@ -162,10 +172,10 @@ void matmul_ctx_set_system(matmul_ctx_t *ctx, int complex_psi0) {
     /* r2c / c2r */
     ctx->fwd_plan = fftw_plan_dft_r2c((int)ctx->dim, fftw_N,
 				      (f64 *)ctx->c_wrk1, (fftw_complex *)ctx->f_wrk,
-				      FFTW_PATIENT);
+				      FFTW_MEASURE);
     ctx->bwd_plan = fftw_plan_dft_c2r((int)ctx->dim, fftw_N,
 				      (fftw_complex *)ctx->f_wrk, (f64 *)ctx->c_wrk1,
-				      FFTW_PATIENT | FFTW_DESTROY_INPUT);
+				      FFTW_MEASURE | FFTW_DESTROY_INPUT);
   }
   assert(NULL != ctx->fwd_plan);
   assert(NULL != ctx->bwd_plan);

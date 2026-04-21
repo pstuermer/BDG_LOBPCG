@@ -81,7 +81,7 @@ TEST(matmulK_d_planewave_1d) {
         x[i] = cos(xj);
     }
 
-    matmulK_d(ctx, x, y);
+    d_matmulK(ctx, x, y);
 
     for (uint64_t i = 0; i < size; i++) {
         const f64 xj = (f64)i * L / (f64)size;
@@ -109,7 +109,7 @@ TEST(matmulK_d_constant) {
     for (uint64_t i = 0; i < size; i++)
         x[i] = 1.0;
 
-    matmulK_d(ctx, x, y);
+    d_matmulK(ctx, x, y);
 
     for (uint64_t i = 0; i < size; i++)
         ASSERT_CLOSE(y[i], 2.0, TOL);
@@ -137,7 +137,7 @@ TEST(matmulK_dz_consistency) {
         const f64 xj = (f64)i * L / (f64)N;
         xd[i] = cos(xj);
     }
-    matmulK_d(ctx_d, xd, yd);
+    d_matmulK(ctx_d, xd, yd);
 
     /* Complex path */
     matmul_ctx_t *ctx_z = make_1d_ctx(N, L, 1, V0, mu);
@@ -148,7 +148,7 @@ TEST(matmulK_dz_consistency) {
         const f64 xj = (f64)i * L / (f64)N;
         xz[i] = cos(xj) + 0.0 * I;
     }
-    matmulK_z(ctx_z, xz, yz);
+    z_matmulK(ctx_z, xz, yz);
 
     /* Compare: real parts must match, imag parts ~ 0 */
     for (uint64_t i = 0; i < N; i++) {
@@ -198,7 +198,7 @@ TEST(matmulK_d_3d) {
                 x[iz * Ny * Nx + iy * Nx + ix] = cos(xv + yv + zv);
             }
 
-    matmulK_d(ctx, x, y);
+    d_matmulK(ctx, x, y);
 
     for (uint64_t iz = 0; iz < Nz; iz++)
         for (uint64_t iy = 0; iy < Ny; iy++)

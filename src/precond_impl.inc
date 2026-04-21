@@ -60,6 +60,17 @@ void FN(precondK)(matmul_ctx_t *ctx, const CTYPE *x, CTYPE *y) {
         y[i] *= p_sqrt[i];
     BDG_TOC(t_s2, t_precondK_scale2);
 
+    /* Sherman-Morrison correction for Goldstone deflation */
+    if (NULL != ctx->gold_smK) {
+      for (uint64_t g = 0; g < ctx->n_goldK; g++) {
+        const CTYPE *v0 = (const CTYPE *)ctx->gold_vecK + g * size;
+        const CTYPE *w0 = (const CTYPE *)ctx->gold_smK + g * size;
+        const CTYPE overlap = dot(size, v0, y);
+        const CTYPE neg_sig = -ctx->gold_sigmaK[g] * overlap;
+        axpy(size, neg_sig, w0, y);
+      }
+    }
+
     BDG_TOC(t0, t_precondK);
     BDG_INC(n_precondK);
 }
@@ -105,6 +116,17 @@ void FN(precondM)(matmul_ctx_t *ctx, const CTYPE *x, CTYPE *y) {
     for (uint64_t i = 0; i < size; i++)
         y[i] *= p_sqrt[i];
     BDG_TOC(t_s2, t_precondM_scale2);
+
+    /* Sherman-Morrison correction for Goldstone deflation */
+    if (NULL != ctx->gold_smM) {
+      for (uint64_t g = 0; g < ctx->n_goldM; g++) {
+        const CTYPE *w = (const CTYPE *)ctx->gold_vecM + g * size;
+        const CTYPE *tw = (const CTYPE *)ctx->gold_smM + g * size;
+        const CTYPE overlap = dot(size, w, y);
+        const CTYPE neg_sig = -ctx->gold_sigmaM[g] * overlap;
+        axpy(size, neg_sig, tw, y);
+      }
+    }
 
     BDG_TOC(t0, t_precondM);
     BDG_INC(n_precondM);

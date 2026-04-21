@@ -1,5 +1,6 @@
 #include "bdg_internal.h"
 #include "lobpcg.h"
+#include "lobpcg/blas_wrapper.h"
 #include <stdlib.h>
 #include <time.h>
 
@@ -26,19 +27,19 @@
 static void matvec_lrep_d(const LinearOperator_d_t *op,
                            f64 *restrict x, f64 *restrict y) {
     matmul_ctx_t *ctx = (matmul_ctx_t *)op->ctx->data;
-    matmulLrep_d(ctx, x, y);
+    d_matmulLrep(ctx, x, y);
 }
 
 static void matvec_swap_d(const LinearOperator_d_t *op,
                            f64 *restrict x, f64 *restrict y) {
     matmul_ctx_t *ctx = (matmul_ctx_t *)op->ctx->data;
-    matmulSwap_d(ctx, x, y);
+    d_matmulSwap(ctx, x, y);
 }
 
 static void matvec_precond_d(const LinearOperator_d_t *op,
                               f64 *restrict x, f64 *restrict y) {
     matmul_ctx_t *ctx = (matmul_ctx_t *)op->ctx->data;
-    precondLrep_d(ctx, x, y);
+    d_precondLrep(ctx, x, y);
 }
 
 /* --- Complex (z) adapters --- */
@@ -46,19 +47,19 @@ static void matvec_precond_d(const LinearOperator_d_t *op,
 static void matvec_lrep_z(const LinearOperator_z_t *op,
                            c64 *restrict x, c64 *restrict y) {
     matmul_ctx_t *ctx = (matmul_ctx_t *)op->ctx->data;
-    matmulLrep_z(ctx, x, y);
+    z_matmulLrep(ctx, x, y);
 }
 
 static void matvec_swap_z(const LinearOperator_z_t *op,
                            c64 *restrict x, c64 *restrict y) {
     matmul_ctx_t *ctx = (matmul_ctx_t *)op->ctx->data;
-    matmulSwap_z(ctx, x, y);
+    z_matmulSwap(ctx, x, y);
 }
 
 static void matvec_precond_z(const LinearOperator_z_t *op,
                               c64 *restrict x, c64 *restrict y) {
     matmul_ctx_t *ctx = (matmul_ctx_t *)op->ctx->data;
-    precondLrep_z(ctx, x, y);
+    z_precondLrep(ctx, x, y);
 }
 
 /* ================================================================
@@ -167,7 +168,7 @@ int bdg_solve_d(bdg_t *bdg) {
   switch (bdg->init_mode) {
   case BDG_INIT_REUSE:
     if (NULL != bdg->reuse_buf && bdg->reuse_n == n && bdg->reuse_cols == sizeSub) {
-      memcpy(alg->S, bdg->reuse_buf, n * sizeSub * sizeof(f64));
+      d_copy(n * sizeSub, bdg->reuse_buf, alg->S);
       safe_free((void **)&bdg->reuse_buf);
       bdg->init_mode = BDG_INIT_WF_WEIGHTED;
       break;
@@ -258,6 +259,10 @@ int bdg_solve_d(bdg_t *bdg) {
   }
   }
 
+  /* Precompute Sherman-Morrison correction for preconditioner */
+  if (ctx->n_goldK > 0 || ctx->n_goldM > 0)
+    d_gold_precompute_sm(ctx);
+
   /* 6. Solve */
   d_ilobpcg(alg);
 
@@ -265,13 +270,13 @@ int bdg_solve_d(bdg_t *bdg) {
   bdg->converged = alg->converged;
 
   bdg->eigvals = xcalloc(nev, sizeof(f64));
-  memcpy(bdg->eigvals, alg->eigVals, nev * sizeof(f64));
+  d_copy(nev, alg->eigVals, bdg->eigvals);
 
   f64 *modes_u = xcalloc(size * nev, sizeof(f64));
   f64 *modes_v = xcalloc(size * nev, sizeof(f64));
   for (uint64_t j = 0; j < nev; j++) {
-    memcpy(&modes_u[j * size], &alg->S[j * n], size * sizeof(f64));
-    memcpy(&modes_v[j * size], &alg->S[j * n + size], size * sizeof(f64));
+    d_copy(size, &alg->S[j * n], &modes_u[j * size]);
+    d_copy(size, &alg->S[j * n + size], &modes_v[j * size]);
   }
   bdg->modes_u = modes_u;
   bdg->modes_v = modes_v;
@@ -323,7 +328,7 @@ int bdg_solve_z(bdg_t *bdg) {
   switch (bdg->init_mode) {
   case BDG_INIT_REUSE:
     if (NULL != bdg->reuse_buf && bdg->reuse_n == n && bdg->reuse_cols == sizeSub) {
-      memcpy(alg->S, bdg->reuse_buf, n * sizeSub * sizeof(c64));
+      z_copy(n * sizeSub, bdg->reuse_buf, alg->S);
       safe_free((void **)&bdg->reuse_buf);
       bdg->init_mode = BDG_INIT_WF_WEIGHTED;
       break;
@@ -413,6 +418,10 @@ int bdg_solve_z(bdg_t *bdg) {
   }
   }
 
+  /* Precompute Sherman-Morrison correction for preconditioner */
+  if (ctx->n_goldK > 0 || ctx->n_goldM > 0)
+    z_gold_precompute_sm(ctx);
+
   /* 6. Solve */
   z_ilobpcg(alg);
 
@@ -420,13 +429,13 @@ int bdg_solve_z(bdg_t *bdg) {
   bdg->converged = alg->converged;
 
   bdg->eigvals = xcalloc(nev, sizeof(f64));
-  memcpy(bdg->eigvals, alg->eigVals, nev * sizeof(f64));
+  d_copy(nev, alg->eigVals, bdg->eigvals);
 
   c64 *modes_u = xcalloc(size * nev, sizeof(c64));
   c64 *modes_v = xcalloc(size * nev, sizeof(c64));
   for (uint64_t j = 0; j < nev; j++) {
-    memcpy(&modes_u[j * size], &alg->S[j * n], size * sizeof(c64));
-    memcpy(&modes_v[j * size], &alg->S[j * n + size], size * sizeof(c64));
+    z_copy(size, &alg->S[j * n], &modes_u[j * size]);
+    z_copy(size, &alg->S[j * n + size], &modes_v[j * size]);
   }
   bdg->modes_u = modes_u;
   bdg->modes_v = modes_v;
